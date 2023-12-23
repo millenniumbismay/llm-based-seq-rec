@@ -150,7 +150,7 @@ cnt = 0
 for user, content in tqdm.tqdm(user_content_dict.items()):
     # print(user, content)
     cnt += 1
-    if cnt <= 500:
+    if cnt <= 4999:
         continue
     user_profile_dict[user] = getUserProfile(model, content)
     # break
@@ -158,7 +158,7 @@ for user, content in tqdm.tqdm(user_content_dict.items()):
         print(user, user_profile_dict[user])
         print("*"*100)
     
-    if cnt == 1000:
+    if cnt == 5500:
         break
 
 f = open("user_profile_dict.pkl","wb")
