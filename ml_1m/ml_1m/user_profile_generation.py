@@ -24,7 +24,8 @@ model_id = "01-ai/Yi-34B-chat"
 print(f"Loading {model_id}...")
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast = False)
 
-max_memory_mapping = {0: "20GiB", 3: "22GiB", "cpu":"20GiB"}
+max_memory_mapping = {2: "21GiB", 3: "22GiB", "cpu":"20GiB"}
+# max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
                                              max_memory = max_memory_mapping,
@@ -158,7 +159,7 @@ for user, content in tqdm.tqdm(user_content_dict.items()):
         print(user, user_profile_dict[user])
         print("*"*100)
     
-    if cnt == 5500:
+    if cnt == 6040:
         break
 
 f = open("user_profile_dict.pkl","wb")
