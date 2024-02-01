@@ -1,10 +1,10 @@
 # This file may be used to create an environment using:
 # $ conda create --name <env> --file <this file>
 # platform: linux-64
-_anaconda_depends=2023.03=py39_0
-_ipyw_jlab_nb_ext_conf=0.1.0=py39h06a4308_0
-_libgcc_mutex=0.1=main
-_openmp_mutex=5.1=1_gnu
+# _anaconda_depends=2023.03=py39_0
+# _ipyw_jlab_nb_ext_conf=0.1.0=py39h06a4308_0
+# _libgcc_mutex=0.1=main
+# _openmp_mutex=5.1=1_gnu
 absl-py=1.0.0=pypi_0
 accelerate=0.19.0=pypi_0
 aiohttp=3.8.1=pypi_0
