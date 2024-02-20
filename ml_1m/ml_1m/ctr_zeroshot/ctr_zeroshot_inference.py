@@ -36,7 +36,7 @@ model_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 print(f"Loading {model_id}...")
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast = False)
 
-max_memory_mapping = {2: "20GiB", 3: "20GiB", "cpu":"20GiB"}
+max_memory_mapping = {0: "15GiB", 3: "20GiB", "cpu":"20GiB"}
 # max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
@@ -96,7 +96,7 @@ cnt = 0
 for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     # print(user, content)
     cnt += 1
-    if cnt <= 499:
+    if cnt <= 1399:
         continue
     ctr_valid_inference_dict[user] = getZeroshotInference(model, content)
     if cnt%50 == 0:
@@ -107,7 +107,7 @@ for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     if user%100 == 0:
         print(user, ctr_valid_inference_dict[user])
         print("*"*100)
-    if cnt == 1400:
+    if cnt == 1800:
         break
 
 f = open("ctr_valid_inference_mixtral.pkl","wb")
