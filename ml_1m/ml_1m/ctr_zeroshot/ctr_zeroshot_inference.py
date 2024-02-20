@@ -20,15 +20,15 @@ model4bitconfig = BitsAndBytesConfig(
     bnb_4bit_use_double_quant=True,
 )
 
-model8bitconfig = BitsAndBytesConfig(
-    load_in_8bit=True,
-    load_in_8bit_fp32_cpu_offload=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16,
-    bnb_4bit_use_double_quant=True,
-    # llm_int8_has_fp16_weight = False ### Good for finetuning
-    llm_int8_enable_fp32_cpu_offload = True ### To upload to cpu but calculations only happen in the GPU in 8-bit
-)
+# model8bitconfig = BitsAndBytesConfig(
+#     load_in_8bit=True,
+#     load_in_8bit_fp32_cpu_offload=True,
+#     bnb_4bit_quant_type="nf4",
+#     bnb_4bit_compute_dtype=torch.bfloat16,
+#     bnb_4bit_use_double_quant=True,
+#     # llm_int8_has_fp16_weight = False ### Good for finetuning
+#     llm_int8_enable_fp32_cpu_offload = True ### To upload to cpu but calculations only happen in the GPU in 8-bit
+# )
 
 # model_id = "01-ai/Yi-34B-chat"
 # model_id = "mistralai/Mistral-7B-Instruct-v0.1"
@@ -36,7 +36,7 @@ model_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 print(f"Loading {model_id}...")
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast = False)
 
-max_memory_mapping = {0: "21GiB", 1: "23GiB", "cpu":"20GiB"}
+max_memory_mapping = {2: "20GiB", 3: "20GiB", "cpu":"20GiB"}
 # max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
@@ -59,7 +59,7 @@ def getZeroshotInference(model, content):
 
     model_inputs = tokenizer(prompt, return_tensors="pt").to(device)
     outputs = model.generate(**model_inputs,
-                             max_new_tokens=512,
+                             max_new_tokens=1024,
                              do_sample = True,
                              temperature=0.1,
                              top_p=0.75
@@ -81,7 +81,7 @@ if os.path.isfile('ctr_valid_inference_mixtral.pkl'):
     print("Loading ctr_valid_inference_dict...")
     with open('ctr_valid_inference_mixtral.pkl', 'rb') as f:
         ctr_valid_inference_dict = pickle.load(f)
-    print(len(ctr_valid_inference_dict))
+    print("Number of users completed:", len(ctr_valid_inference_dict))
     for user, inference in ctr_valid_inference_dict.items():
         print(user, inference)
         break
@@ -96,18 +96,18 @@ cnt = 0
 for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     # print(user, content)
     cnt += 1
-    # if cnt <= 4000:
-    #     continue
+    if cnt <= 149:
+        continue
     ctr_valid_inference_dict[user] = getZeroshotInference(model, content)
     if cnt%50 == 0:
         print(f"Saving at {cnt}...")
         f2 = open("ctr_valid_inference_mixtral.pkl","wb")
         pickle.dump(ctr_valid_inference_dict,f2)
         f2.close()
-    if user%1 == 0:
+    if user%100 == 0:
         print(user, ctr_valid_inference_dict[user])
         print("*"*100)
-    if cnt == 2:
+    if cnt == 500:
         break
 
 f = open("ctr_valid_inference_mixtral.pkl","wb")
