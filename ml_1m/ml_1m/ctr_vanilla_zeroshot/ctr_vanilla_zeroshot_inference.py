@@ -48,15 +48,7 @@ print("Generating CTR Vanilla Zeroshot Inference...")
 print('#'*100)
 
 def getZeroshotInference(model, content):
-    # prompt = """
-    #         List of user's liked and disliked movies and their descriptions are given below -
-    #         """
     prompt = content
-    # prompt += """
-    #         You are an expert movie critic. Strictly in 200 words, generate a concise user profile describing the characteristics of movies he likes and dislikes. Do not include information not present in the movie descriptions.
-    #         """
-    # print("prompt:", prompt)
-
     model_inputs = tokenizer(prompt, return_tensors="pt").to(device)
     outputs = model.generate(**model_inputs,
                              max_new_tokens=32,
@@ -69,47 +61,47 @@ def getZeroshotInference(model, content):
     # print("Response:", response[len(prompt):])
     return response[len(prompt):]
 
-print(f"Loading ctr_vanilla_valid_zeroshot_dataset...")
-with open('./ctr_vanilla_zeroshot_dataset/ctr_vanilla_valid_zeroshot_dataset.pkl', 'rb') as f:
-    ctr_vanilla_valid_dataset_dict = pickle.load(f)
-print(len(ctr_vanilla_valid_dataset_dict))
-for user, content in ctr_vanilla_valid_dataset_dict.items():
+print(f"Loading ctr_vanilla_test_zeroshot_dataset...")
+with open('./ctr_vanilla_zeroshot_dataset/ctr_vanilla_test_zeroshot_dataset.pkl', 'rb') as f:
+    ctr_vanilla_test_dataset_dict = pickle.load(f)
+print(len(ctr_vanilla_test_dataset_dict))
+for user, content in ctr_vanilla_test_dataset_dict.items():
     print(user, content)
     break
 
-if os.path.isfile('ctr_vanilla_valid_inference_mixtral.pkl'):
-    print("Loading ctr_vanilla_valid_inference_dict...")
-    with open('ctr_vanilla_valid_inference_mixtral.pkl', 'rb') as f:
-        ctr_vanilla_valid_inference_dict = pickle.load(f)
-    print("Number of users completed:", len(ctr_vanilla_valid_inference_dict))
-    for user, inference in ctr_vanilla_valid_inference_dict.items():
+if os.path.isfile('ctr_vanilla_test_inference_mixtral.pkl'):
+    print("Loading ctr_vanilla_test_inference_dict...")
+    with open('ctr_vanilla_test_inference_mixtral.pkl', 'rb') as f:
+        ctr_vanilla_test_inference_dict = pickle.load(f)
+    print("Number of users completed:", len(ctr_vanilla_test_inference_dict))
+    for user, inference in ctr_vanilla_test_inference_dict.items():
         print(user, inference)
         break
 
     # with open('user_profile_dict_mixtral.pkl', 'rb') as f:
     #     user_profile_dict_mixtral = pickle.load(f)
 else:
-    print("ctr_vanilla_valid_inference_mixtral.pkl not found... Creating new dict")
-    ctr_vanilla_valid_inference_dict = dict()
+    print("ctr_vanilla_test_inference_mixtral.pkl not found... Creating new dict")
+    ctr_vanilla_test_inference_dict = dict()
 
 cnt = 0
-for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
+for user, content in tqdm.tqdm(ctr_vanilla_test_dataset_dict.items()):
     # print(user, content)
     cnt += 1
-    if cnt <= 3599:
-        continue
-    ctr_vanilla_valid_inference_dict[user] = getZeroshotInference(model, content)
+    # if cnt <= 999:
+    #     continue
+    ctr_vanilla_test_inference_dict[user] = getZeroshotInference(model, content)
     if cnt%50 == 0:
         print(f"Saving at {cnt}...")
-        f2 = open("ctr_vanilla_valid_inference_mixtral.pkl","wb")
-        pickle.dump(ctr_vanilla_valid_inference_dict,f2)
+        f2 = open("ctr_vanilla_test_inference_mixtral.pkl","wb")
+        pickle.dump(ctr_vanilla_test_inference_dict,f2)
         f2.close()
-    if user%100 == 0:
-        print(user, ctr_vanilla_valid_inference_dict[user])
+    if user%1 == 0:
+        print(user, ctr_vanilla_test_inference_dict[user])
         print("*"*100)
-    if cnt == 6040:
+    if cnt == 1:
         break
 
-f = open("ctr_vanilla_valid_inference_mixtral.pkl","wb")
-pickle.dump(ctr_vanilla_valid_inference_dict,f)
+f = open("ctr_vanilla_test_inference_mixtral.pkl","wb")
+pickle.dump(ctr_vanilla_test_inference_dict,f)
 f.close()
