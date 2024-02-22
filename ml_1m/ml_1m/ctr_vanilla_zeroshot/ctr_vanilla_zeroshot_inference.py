@@ -96,11 +96,11 @@ for user, content in tqdm.tqdm(ctr_vanilla_test_dataset_dict.items()):
         f2 = open("ctr_vanilla_test_inference_mixtral.pkl","wb")
         pickle.dump(ctr_vanilla_test_inference_dict,f2)
         f2.close()
-    if user%1 == 0:
+    if user%100 == 0:
         print(user, ctr_vanilla_test_inference_dict[user])
         print("*"*100)
-    if cnt == 1:
-        break
+    # if cnt == 6040:
+    #     break
 
 f = open("ctr_vanilla_test_inference_mixtral.pkl","wb")
 pickle.dump(ctr_vanilla_test_inference_dict,f)
