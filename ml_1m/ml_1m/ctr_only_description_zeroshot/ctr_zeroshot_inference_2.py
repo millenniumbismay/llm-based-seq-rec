@@ -36,7 +36,7 @@ model_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 print(f"Loading {model_id}...")
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast = False)
 
-max_memory_mapping = {0: "15GiB", 3: "20GiB", "cpu":"20GiB"}
+max_memory_mapping = {1: "20GiB", 2: "20GiB", "cpu":"20GiB"}
 # max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
@@ -62,17 +62,17 @@ def getZeroshotInference(model, content):
     # print("Response:", response[len(prompt):])
     return response[len(prompt):]
 
-print(f"Loading ctr_valid_only_desc_dataset...")
-with open('./ctr_only_desc_dataset/ctr_valid_only_desc_dataset.pkl', 'rb') as f:
+print(f"Loading ctr_test_only_desc_dataset...")
+with open('./ctr_only_desc_dataset/ctr_test_only_desc_dataset.pkl', 'rb') as f:
     ctr_valid_dataset_dict = pickle.load(f)
 print(len(ctr_valid_dataset_dict))
 for user, content in ctr_valid_dataset_dict.items():
     print(user, content)
     break
 
-if os.path.isfile('ctr_valid_only_desc_inference_mixtral.pkl'):
-    print("Loading ctr_valid_only_desc_inference_mixtral...")
-    with open('ctr_valid_only_desc_inference_mixtral.pkl', 'rb') as f:
+if os.path.isfile('ctr_test_only_desc_inference_mixtral.pkl'):
+    print("Loading ctr_test_only_desc_inference_mixtral...")
+    with open('ctr_test_only_desc_inference_mixtral.pkl', 'rb') as f:
         ctr_valid_inference_dict = pickle.load(f)
     print("Number of users completed:", len(ctr_valid_inference_dict))
     for user, inference in ctr_valid_inference_dict.items():
@@ -82,7 +82,7 @@ if os.path.isfile('ctr_valid_only_desc_inference_mixtral.pkl'):
     # with open('user_profile_dict_mixtral.pkl', 'rb') as f:
     #     user_profile_dict_mixtral = pickle.load(f)
 else:
-    print("ctr_valid_only_desc_inference_mixtral.pkl not found... Creating new dict")
+    print("ctr_test_only_desc_inference_mixtral.pkl not found... Creating new dict")
     ctr_valid_inference_dict = dict()
 
 cnt = 0
@@ -94,15 +94,15 @@ for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     ctr_valid_inference_dict[user] = getZeroshotInference(model, content)
     if cnt%50 == 0:
         print(f"Saving at {cnt}...")
-        f2 = open("ctr_valid_only_desc_inference_mixtral.pkl","wb")
+        f2 = open("ctr_test_only_desc_inference_mixtral.pkl","wb")
         pickle.dump(ctr_valid_inference_dict,f2)
         f2.close()
     if user%100 == 0:
-        # print(user, ctr_valid_inference_dict[user])
+        print(user, ctr_valid_inference_dict[user])
         print("*"*100)
     # if cnt == 10:
-    #     break
+        # break
 
-f = open("ctr_valid_only_desc_inference_mixtral.pkl","wb")
+f = open("ctr_test_only_desc_inference_mixtral.pkl","wb")
 pickle.dump(ctr_valid_inference_dict,f)
 f.close()
