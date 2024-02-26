@@ -89,7 +89,7 @@ cnt = 0
 for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     # print(user, content)
     cnt += 1
-    if cnt <= 899:
+    if cnt <= 1999:
         continue
     ctr_valid_inference_dict[user] = getZeroshotInference(model, content)
     if cnt%50 == 0:
@@ -100,8 +100,8 @@ for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     if user%100 == 0:
         print(user, ctr_valid_inference_dict[user])
         print("*"*100)
-    if cnt == 2000:
-        break
+    # if cnt == 6040:
+    #     break
 
 f = open("ctr_test_inference_mixtral.pkl","wb")
 pickle.dump(ctr_valid_inference_dict,f)
