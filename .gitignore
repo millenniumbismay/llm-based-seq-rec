@@ -1,3 +1,4 @@
 .ipynb_checkpoints
 .DS_Store
 ml_1m/ml_1m/semantic_ctr_zeroshot/movies_summary_3072_embeddings.csv
+ml_1m/ml_1m/semantic_ctr_zeroshot/movie_3072_embeddings.pkl
