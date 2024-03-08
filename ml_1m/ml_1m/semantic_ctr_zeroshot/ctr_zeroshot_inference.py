@@ -36,7 +36,7 @@ model_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 print(f"Loading {model_id}...")
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast = False)
 
-max_memory_mapping = {0: "20GiB", 3: "20GiB", "cpu":"20GiB"}
+max_memory_mapping = {2: "14GiB", 3: "14GiB", "cpu":"20GiB"}
 # max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
@@ -55,7 +55,7 @@ def getZeroshotInference(model, content):
                              max_new_tokens=1024,
                              do_sample = True,
                              temperature=0.1,
-                             top_p=0.75
+                             top_p=0.9
                             )
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
@@ -63,16 +63,16 @@ def getZeroshotInference(model, content):
     return response[len(prompt):]
 
 print(f"Loading sem_ctr_valid_zeroshot_dataset...")
-with open('./sem_sim_dataset/sem_ctr_valid_zeroshot_dataset.pkl', 'rb') as f:
+with open('./sem_sim_dataset/sem_ctr_valid_zeroshot_dataset_2.pkl', 'rb') as f:
     ctr_valid_dataset_dict = pickle.load(f)
 print(len(ctr_valid_dataset_dict))
 for user, content in ctr_valid_dataset_dict.items():
     print(user, content)
     break
 
-if os.path.isfile('sem_ctr_test_inference_mixtral.pkl'):
-    print("Loading sem_ctr_test_inference_mixtral...")
-    with open('sem_ctr_test_inference_mixtral.pkl', 'rb') as f:
+if os.path.isfile('sem_ctr_valid_inference_mixtral.pkl'):
+    print("Loading sem_ctr_valid_inference_mixtral...")
+    with open('sem_ctr_valid_inference_mixtral.pkl', 'rb') as f:
         ctr_valid_inference_dict = pickle.load(f)
     print("Number of users completed:", len(ctr_valid_inference_dict))
     for user, inference in ctr_valid_inference_dict.items():
@@ -82,27 +82,27 @@ if os.path.isfile('sem_ctr_test_inference_mixtral.pkl'):
     # with open('user_profile_dict_mixtral.pkl', 'rb') as f:
     #     user_profile_dict_mixtral = pickle.load(f)
 else:
-    print("sem_ctr_test_inference_mixtral.pkl not found... Creating new dict")
+    print("sem_ctr_valid_inference_mixtral.pkl not found... Creating new dict")
     ctr_valid_inference_dict = dict()
 
 cnt = 0
 for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     # print(user, content)
     cnt += 1
-    # if cnt <= 1999:
-    #     continue
+    if cnt <= 3699:
+        continue
     ctr_valid_inference_dict[user] = getZeroshotInference(model, content)
     if cnt%50 == 0:
         print(f"Saving at {cnt}...")
-        f2 = open("sem_ctr_test_inference_mixtral.pkl","wb")
+        f2 = open("sem_ctr_valid_inference_mixtral.pkl","wb")
         pickle.dump(ctr_valid_inference_dict,f2)
         f2.close()
     if user%100 == 0:
         print(user, ctr_valid_inference_dict[user])
         print("*"*100)
-    if cnt == 1000:
-        break
+    # if cnt == 4500:
+    #     break
 
-f = open("sem_ctr_test_inference_mixtral.pkl","wb")
+f = open("sem_ctr_valid_inference_mixtral.pkl","wb")
 pickle.dump(ctr_valid_inference_dict,f)
 f.close()
