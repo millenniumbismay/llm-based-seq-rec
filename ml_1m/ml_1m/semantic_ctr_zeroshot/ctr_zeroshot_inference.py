@@ -62,17 +62,17 @@ def getZeroshotInference(model, content):
     # print("Response:", response[len(prompt):])
     return response[len(prompt):]
 
-print(f"Loading sem_ctr_valid_zeroshot_dataset...")
-with open('./sem_sim_dataset/sem_ctr_valid_zeroshot_dataset_2.pkl', 'rb') as f:
+print(f"Loading sem_ctr_test_zeroshot_dataset...")
+with open('./sem_sim_dataset/sem_ctr_test_zeroshot_dataset.pkl', 'rb') as f:
     ctr_valid_dataset_dict = pickle.load(f)
 print(len(ctr_valid_dataset_dict))
 for user, content in ctr_valid_dataset_dict.items():
     print(user, content)
     break
 
-if os.path.isfile('sem_ctr_valid_inference_mixtral.pkl'):
-    print("Loading sem_ctr_valid_inference_mixtral...")
-    with open('sem_ctr_valid_inference_mixtral.pkl', 'rb') as f:
+if os.path.isfile('sem_ctr_test_inference_mixtral.pkl'):
+    print("Loading sem_ctr_test_inference_mixtral...")
+    with open('sem_ctr_test_inference_mixtral.pkl', 'rb') as f:
         ctr_valid_inference_dict = pickle.load(f)
     print("Number of users completed:", len(ctr_valid_inference_dict))
     for user, inference in ctr_valid_inference_dict.items():
@@ -82,27 +82,27 @@ if os.path.isfile('sem_ctr_valid_inference_mixtral.pkl'):
     # with open('user_profile_dict_mixtral.pkl', 'rb') as f:
     #     user_profile_dict_mixtral = pickle.load(f)
 else:
-    print("sem_ctr_valid_inference_mixtral.pkl not found... Creating new dict")
+    print("sem_ctr_test_inference_mixtral.pkl not found... Creating new dict")
     ctr_valid_inference_dict = dict()
 
 cnt = 0
 for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     # print(user, content)
     cnt += 1
-    if cnt <= 3699:
+    if cnt <= 999:
         continue
     ctr_valid_inference_dict[user] = getZeroshotInference(model, content)
     if cnt%50 == 0:
         print(f"Saving at {cnt}...")
-        f2 = open("sem_ctr_valid_inference_mixtral.pkl","wb")
+        f2 = open("sem_ctr_test_inference_mixtral.pkl","wb")
         pickle.dump(ctr_valid_inference_dict,f2)
         f2.close()
     if user%100 == 0:
         print(user, ctr_valid_inference_dict[user])
         print("*"*100)
-    # if cnt == 4500:
-    #     break
+    if cnt == 3000:
+        break
 
-f = open("sem_ctr_valid_inference_mixtral.pkl","wb")
+f = open("sem_ctr_test_inference_mixtral.pkl","wb")
 pickle.dump(ctr_valid_inference_dict,f)
 f.close()
