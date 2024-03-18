@@ -52,27 +52,27 @@ def getZeroshotInference(model, content):
 
     model_inputs = tokenizer(prompt, return_tensors="pt").to(device)
     outputs = model.generate(**model_inputs,
-                             max_new_tokens=1024,
+                             max_new_tokens=64,
                              do_sample = True,
                              temperature=0.1,
-                             top_p=0.9
+                             top_p=0.75
                             )
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     # print("Response:", response[len(prompt):])
     return response[len(prompt):]
 
-print(f"Loading sem_ctr_test_zeroshot_dataset...")
-with open('./sem_sim_dataset/sem_ctr_test_zeroshot_dataset.pkl', 'rb') as f:
+print(f"Loading rella_valid_dataset...")
+with open('./rella_dataset/rella_valid_dataset.pkl', 'rb') as f:
     ctr_valid_dataset_dict = pickle.load(f)
 print(len(ctr_valid_dataset_dict))
 for user, content in ctr_valid_dataset_dict.items():
     print(user, content)
     break
 
-if os.path.isfile('sem_ctr_test_inference_mixtral.pkl'):
-    print("Loading sem_ctr_test_inference_mixtral...")
-    with open('sem_ctr_test_inference_mixtral.pkl', 'rb') as f:
+if os.path.isfile('rella_valid_inference_mixtral.pkl'):
+    print("Loading rella_valid_inference_mixtral...")
+    with open('rella_valid_inference_mixtral.pkl', 'rb') as f:
         ctr_valid_inference_dict = pickle.load(f)
     print("Number of users completed:", len(ctr_valid_inference_dict))
     for user, inference in ctr_valid_inference_dict.items():
@@ -82,27 +82,27 @@ if os.path.isfile('sem_ctr_test_inference_mixtral.pkl'):
     # with open('user_profile_dict_mixtral.pkl', 'rb') as f:
     #     user_profile_dict_mixtral = pickle.load(f)
 else:
-    print("sem_ctr_test_inference_mixtral.pkl not found... Creating new dict")
+    print("rella_valid_inference_mixtral.pkl not found... Creating new dict")
     ctr_valid_inference_dict = dict()
 
 cnt = 0
 for user, content in tqdm.tqdm(ctr_valid_dataset_dict.items()):
     # print(user, content)
     cnt += 1
-    if cnt <= 2999:
-        continue
+    # if cnt <= 2999:
+    #     continue
     ctr_valid_inference_dict[user] = getZeroshotInference(model, content)
     if cnt%50 == 0:
         print(f"Saving at {cnt}...")
-        f2 = open("sem_ctr_test_inference_mixtral.pkl","wb")
+        f2 = open("rella_valid_inference_mixtral.pkl","wb")
         pickle.dump(ctr_valid_inference_dict,f2)
         f2.close()
     if user%100 == 0:
         print(user, ctr_valid_inference_dict[user])
         print("*"*100)
-    # if cnt == 3000:
+    # if cnt == 3:
     #     break
 
-f = open("sem_ctr_test_inference_mixtral.pkl","wb")
+f = open("rella_valid_inference_mixtral.pkl","wb")
 pickle.dump(ctr_valid_inference_dict,f)
 f.close()
