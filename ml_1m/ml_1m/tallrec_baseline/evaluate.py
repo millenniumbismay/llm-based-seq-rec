@@ -27,7 +27,7 @@ except:  # noqa: E722
 def main(
     load_8bit: bool = False,
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",
-    lora_weights: str = "./lora-llama7b/sample_64",
+    lora_weights: str = "./lora-llama7b/sample_128",
     test_data_path: str = "./data/movie/test.json",
     result_json_data: str = "temp.json",
     batch_size: int = 32,
@@ -46,7 +46,7 @@ def main(
     
     # temp_list = model_type.split('_')
     seed = 0
-    sample = 64
+    sample = 128
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -187,7 +187,7 @@ def main(
         for i, test in tqdm(enumerate(test_data)):
             test_data[i]['predict'] = outputs[i]
             test_data[i]['logits'] = logits[i]
-            print(outputs[i], logits[i][0])
+            print(f"{outputs[i]} --- {outputs[i][0]} --- {logits[i][0]}")
             print("--------")
             pred.append(logits[i][0])
 

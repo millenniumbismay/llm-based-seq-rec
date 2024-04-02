@@ -29,8 +29,8 @@ def train(
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./data/movie/train.json",
     val_data_path: str = "./data/movie/valid.json",
-    output_dir: str = "./lora-llama7b/sample_64",
-    sample: int = 64,
+    output_dir: str = "./lora-llama7b/sample_128",
+    sample: int = 128,
     seed: int = 0,
     # training hyperparams
     batch_size: int = 128,
