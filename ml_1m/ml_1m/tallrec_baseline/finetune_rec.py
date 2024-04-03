@@ -29,8 +29,8 @@ def train(
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./data/movie/train.json",
     val_data_path: str = "./data/movie/valid.json",
-    output_dir: str = "./lora-llama7b/sample_128",
-    sample: int = 128,
+    output_dir: str = "./lora-llama7b/sample_256",
+    sample: int = 256,
     seed: int = 0,
     # training hyperparams
     batch_size: int = 128,
@@ -241,7 +241,7 @@ def train(
         if sample <= 128 :
             eval_step = 20
         else:
-            eval_step = sample / 128 * 20
+            eval_step = sample / 128 * 10
     # print("sample: ", sample)
     
     trainer = transformers.Trainer(
@@ -277,7 +277,7 @@ def train(
         ),
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-        callbacks = [EarlyStoppingCallback(early_stopping_patience=2)]
+        callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]
     )
     model.config.use_cache = False
 
