@@ -28,7 +28,7 @@ except:  # noqa: E722
 def main(
     load_8bit: bool = False,
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",
-    lora_weights: str = "./lora-llama7b/sample_128",
+    lora_weights: str = "./lora-llama7b/sample_256",
     test_data_path: str = "./data/movie/test.json",
     result_json_data: str = "temp_new.json",
     batch_size: int = 32,
@@ -47,7 +47,7 @@ def main(
     
     # temp_list = model_type.split('_')
     seed = 0
-    sample = 128
+    sample = 256
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -122,35 +122,20 @@ def main(
     # if torch.__version__ >= "2" and sys.platform != "win32":
     #     model = torch.compile(model)
 
-    def evalHelper():
-        pattern = r"(?:\s+)?(Yes|No)\b"
-        invalid_users = []
-        cnt = cntInvalid = cntY = cntN = 0
-        user_inference_dict = dict()
-        for user, inference in inference_dict.items():
-            cnt += 1
-            # print(user, inference)
-            # Use re.findall to find all matches in the string
-            matches = re.findall(pattern, inference, re.IGNORECASE)
-            if len(matches) == 0:
-                cntInvalid += 1
-                invalid_users.append(user)
-                user_inference_dict[user] = 0
-            for match in matches:
-                if match == 'Yes':
-                    cntY += 1
-                    user_inference_dict[user] = 1
-                    break
-                elif match == 'No':
-                    cntN += 1
-                    user_inference_dict[user] = 0
-                    break
-            # print('*'*100)
-            # if cnt == 10:
-            #     break
-        print(f"Yes: {cntY} -- No: {cntN} -- Invalid: {cntInvalid}")
-        print("invalid_users:", invalid_users)
-        print(len(user_inference_dict))
+    def evalHelper(inference, cntY, cntN, cntInvalid, invalid_res):
+        Yes_No_pattern = r"\b(Yes|No)\b"
+        matches = re.findall(Yes_No_pattern, inference, re.IGNORECASE)
+        if len(matches) == 0:
+            cntInvalid += 1
+            invalid_res.append(inference)
+            return 0, cntY, cntN, cntInvalid, invalid_res
+        for match in matches:
+            if match == 'Yes' or match == 'yes':
+                cntY += 1
+                return 1, cntY, cntN, cntInvalid, invalid_res
+            elif match == 'No' or match == 'no':
+                cntN += 1
+                return 0, cntY, cntN, cntInvalid, invalid_res
 
     def evaluate(
         instructions,
@@ -201,6 +186,9 @@ def main(
     gold = []
     pred = []
 
+    cntInvalid = cntY = cntN = 0
+    invalid_res = []
+
     with open(test_data_path, 'r') as f:
         test_data = json.load(f)
         instructions = [_['instruction'] for _ in test_data]
@@ -220,9 +208,26 @@ def main(
             test_data[i]['logits'] = logits[i]
             print(f"{outputs[i]} --- {outputs[i][0]} --- {logits[i][0]}")
             print("--------")
-            pred.append(logits[i][0])
+            res, cntY, cntN, cntInvalid, invalid_res = evalHelper(outputs[i], cntY, cntN, cntInvalid, invalid_res)
+            pred.append(res)
 
-    from sklearn.metrics import roc_auc_score
+    print(f"Yes: {cntY} -- No: {cntN} -- Invalid: {cntInvalid}")
+    print("Invalid Results: ", invalid_res)
+
+    from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_score, recall_score
+
+    conf_matrix = confusion_matrix(gold, pred)
+    print("Confusion Matrix:")
+    print(conf_matrix)
+
+    precision = precision_score(gold, pred)
+    print("Precision:", precision)
+
+    recall = recall_score(gold, pred)
+    print("Recall:", recall)
+
+    accuracy = accuracy_score(gold, pred)
+    print("Accuracy:", accuracy)
 
     data[train_sce][test_sce][model_name][seed][sample] = roc_auc_score(gold, pred)
     print(data)

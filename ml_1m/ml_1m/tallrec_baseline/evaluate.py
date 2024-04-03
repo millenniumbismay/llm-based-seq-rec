@@ -25,7 +25,7 @@ except:  # noqa: E722
 
 
 def main(
-    load_8bit: bool = False,
+    load_8bit: bool = True,
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",
     lora_weights: str = "./lora-llama7b/sample_256",
     test_data_path: str = "./data/movie/test.json",
@@ -150,8 +150,9 @@ def main(
                 max_new_tokens=max_new_tokens,
                 # batch_size=batch_size,
             )
-        s = generation_output.sequences
+        # s = generation_output.sequences
         scores = generation_output.scores[0].softmax(dim=-1)
+        # print(scores)
         logits = torch.tensor(scores[:,[8241, 3782]], dtype=torch.float32).softmax(dim=-1)
         input_ids = inputs["input_ids"].to(device)
         L = input_ids.shape[1]
@@ -159,6 +160,7 @@ def main(
         output = tokenizer.batch_decode(s, skip_special_tokens=True)
         output = [_.split('Response:\n')[-1] for _ in output]
         # print("output:", output)
+        # return 0
         return output, logits.tolist()
         
     # testing code for readme
@@ -191,12 +193,25 @@ def main(
             print("--------")
             pred.append(logits[i][0])
 
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_score, recall_score
 
     data[train_sce][test_sce][model_name][seed][sample] = roc_auc_score(gold, pred)
     print(data)
     with open(result_json_data, 'w+') as f:
         json.dump(data, f, indent=4)
+    
+    # conf_matrix = confusion_matrix(gold, pred)
+    # print("Confusion Matrix:")
+    # print(conf_matrix)
+
+    # precision = precision_score(gold, pred)
+    # print("Precision:", precision)
+
+    # recall = recall_score(gold, pred)
+    # print("Recall:", recall)
+
+    # accuracy = accuracy_score(gold, pred)
+    # print("Accuracy:", accuracy)
 
 def generate_prompt(instruction, input=None):
     if input:
