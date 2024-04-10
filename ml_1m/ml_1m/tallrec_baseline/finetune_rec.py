@@ -29,13 +29,13 @@ def train(
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./data/movie/train.json",
     val_data_path: str = "./data/movie/valid.json",
-    output_dir: str = "./lora-llama7b/sample_256",
-    sample: int = 256,
+    output_dir: str = "./lora-llama7b/sample_1024_epoch_5",
+    sample: int = 1024,
     seed: int = 0,
     # training hyperparams
     batch_size: int = 128,
     micro_batch_size: int = 32,
-    num_epochs: int = 100,
+    num_epochs: int = 45,
     learning_rate: float = 1e-4,
     cutoff_len: int = 512,
     # lora hyperparams
@@ -54,7 +54,7 @@ def train(
     wandb_run_name: str = "",
     wandb_watch: str = "",  # options: false | gradients | all
     wandb_log_model: str = "",  # options: false | true
-    resume_from_checkpoint: str = None,  # either training checkpoint or final adapter
+    resume_from_checkpoint: str = "./lora-llama7b/sample_1024_epoch_5/checkpoint-32/",  # either training checkpoint or final adapter
 
 ):
     print(
@@ -239,9 +239,9 @@ def train(
     
     if sample > -1:
         if sample <= 128 :
-            eval_step = 20
+            eval_step = 2
         else:
-            eval_step = sample / 128 * 10
+            eval_step = sample / 128 * 2
     # print("sample: ", sample)
     
     trainer = transformers.Trainer(
@@ -291,8 +291,8 @@ def train(
     # if torch.__version__ >= "2" and sys.platform != "win32":
     #     model = torch.compile(model)
 
-    # trainer.train(resume_from_checkpoint=resume_from_checkpoint)
-    trainer.train()
+    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+    # trainer.train()
 
 
     model.save_pretrained(output_dir, safe_serialization = False)

@@ -28,7 +28,7 @@ except:  # noqa: E722
 def main(
     load_8bit: bool = False,
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",
-    lora_weights: str = "./lora-llama7b/sample_256",
+    lora_weights: str = "./lora-llama7b/sample_1024_epoch_5",
     test_data_path: str = "./data/movie/test.json",
     result_json_data: str = "temp_new.json",
     batch_size: int = 32,
@@ -47,7 +47,7 @@ def main(
     
     # temp_list = model_type.split('_')
     seed = 0
-    sample = 256
+    sample = 1024
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')

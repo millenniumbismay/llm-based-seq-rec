@@ -25,9 +25,9 @@ except:  # noqa: E722
 
 
 def main(
-    load_8bit: bool = True,
+    load_8bit: bool = False,
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",
-    lora_weights: str = "./lora-llama7b/sample_256",
+    lora_weights: str = "./lora-llama7b/sample_1024_epoch_5",
     test_data_path: str = "./data/movie/test.json",
     result_json_data: str = "temp.json",
     batch_size: int = 32,
@@ -46,7 +46,7 @@ def main(
     
     # temp_list = model_type.split('_')
     seed = 0
-    sample = 256
+    sample = 1024
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -152,13 +152,16 @@ def main(
             )
         # s = generation_output.sequences
         scores = generation_output.scores[0].softmax(dim=-1)
-        # print(scores)
+        # print(scores.shape)
         logits = torch.tensor(scores[:,[8241, 3782]], dtype=torch.float32).softmax(dim=-1)
+        # print(logits.shape)
+        # print("__________")
         input_ids = inputs["input_ids"].to(device)
         L = input_ids.shape[1]
         s = generation_output.sequences
         output = tokenizer.batch_decode(s, skip_special_tokens=True)
         output = [_.split('Response:\n')[-1] for _ in output]
+        # print(output, logits.tolist())
         # print("output:", output)
         # return 0
         return output, logits.tolist()
@@ -195,6 +198,7 @@ def main(
 
     from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_score, recall_score
 
+    print(len(pred), pred[:100])
     data[train_sce][test_sce][model_name][seed][sample] = roc_auc_score(gold, pred)
     print(data)
     with open(result_json_data, 'w+') as f:
