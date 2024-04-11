@@ -26,16 +26,16 @@ from sklearn.metrics import roc_auc_score
 
 def train(
     # model/data params
-    base_model: str = "baffo32/decapoda-research-llama-7B-hf",  # the only required argument
+    base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./data/movie/train.json",
     val_data_path: str = "./data/movie/valid.json",
-    output_dir: str = "./lora-llama7b/sample_1024_epoch_5",
-    sample: int = 1024,
+    output_dir: str = "./lora_llama2_chat/sample_8_test",
+    sample: int = 32,
     seed: int = 0,
     # training hyperparams
     batch_size: int = 128,
     micro_batch_size: int = 32,
-    num_epochs: int = 45,
+    num_epochs: int = 5,
     learning_rate: float = 1e-4,
     cutoff_len: int = 512,
     # lora hyperparams
@@ -54,11 +54,11 @@ def train(
     wandb_run_name: str = "",
     wandb_watch: str = "",  # options: false | gradients | all
     wandb_log_model: str = "",  # options: false | true
-    resume_from_checkpoint: str = "./lora-llama7b/sample_1024_epoch_5/checkpoint-32/",  # either training checkpoint or final adapter
+    resume_from_checkpoint: str = "",  # either training checkpoint or final adapter
 
 ):
     print(
-        f"Training Alpaca-LoRA model with params:\n"
+        f"Training lora-llama2-chat model with params:\n"
         f"base_model: {base_model}\n"
         f"train_data_path: {train_data_path}\n"
         f"val_data_path: {val_data_path}\n"
@@ -108,16 +108,18 @@ def train(
     if len(wandb_log_model) > 0:
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 
+    access_token = "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"
     model = LlamaForCausalLM.from_pretrained(
         base_model,
         load_in_8bit=True,
         torch_dtype=torch.float16,
         device_map=device_map,
         max_memory = max_memory_mapping,
-        # token = access_token,
+        token = access_token,
     ).eval()
 
-    tokenizer = LlamaTokenizer.from_pretrained(base_model)
+    tokenizer = LlamaTokenizer.from_pretrained(base_model,
+                                               token = access_token,)
 
     tokenizer.pad_token_id = (
         0  # unk. we want this to be different from the eos token
@@ -149,6 +151,7 @@ def train(
     def generate_and_tokenize_prompt(data_point):
         full_prompt = generate_prompt(data_point)
         tokenized_full_prompt = tokenize(full_prompt)
+        print("TRAIN ON  INPUTS FLAG:", train_on_inputs)
         if not train_on_inputs:
             user_prompt = generate_prompt({**data_point, "output": ""})
             tokenized_user_prompt = tokenize(user_prompt, add_eos_token=False)
@@ -219,7 +222,12 @@ def train(
         model.model_parallel = True
 
     def compute_metrics(eval_preds):
+        # print(eval_preds[0], eval_preds[1], eval_preds[2])
         pre, labels = eval_preds
+        # print("Lengths:", len(labels), len(pre), len(pre[0]), len(pre[1]))
+        # print("Dimensions:", len(labels[0]))
+        # print("labels:", labels)
+        # print(pre[1], pre[0])
         auc = roc_auc_score(pre[1], pre[0])
         return {'auc': auc}
     
@@ -228,18 +236,27 @@ def train(
         Original Trainer may have a memory leak. 
         This is a workaround to avoid storing too many tensors that are not needed.
         """
+        print(f"len of logits: {logits.shape}")
+        # print(f"logits dimension: {len(logits[0])}")
+        print(f"len of labels: {labels.shape} --- labels: {labels}")
+        # print(f"labels dimension: {len(labels[0])}")
+
         labels_index = torch.argwhere(torch.bitwise_or(labels == 8241, labels == 3782))
         gold = torch.where(labels[labels_index[:, 0], labels_index[:, 1]] == 3782, 0, 1)
         labels_index[: , 1] = labels_index[: , 1] - 1
         logits = logits.softmax(dim=-1)
+        argmax_indices = torch.argmax(logits, dim=-1)
+        print("Predicted Indices:", argmax_indices)
         logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3782, 8241]], dim = -1)
+        # print(logits)
+        # print(logits[:, 1][2::3], gold[2::3])
         return logits[:, 1][2::3], gold[2::3]
 
     os.environ["WANDB_DISABLED"] = "true"
     
     if sample > -1:
         if sample <= 128 :
-            eval_step = 2
+            eval_step = 4
         else:
             eval_step = sample / 128 * 2
     # print("sample: ", sample)
@@ -291,8 +308,8 @@ def train(
     # if torch.__version__ >= "2" and sys.platform != "win32":
     #     model = torch.compile(model)
 
-    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
-    # trainer.train()
+    # trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+    trainer.train()
 
 
     model.save_pretrained(output_dir, safe_serialization = False)

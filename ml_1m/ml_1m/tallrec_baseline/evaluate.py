@@ -25,11 +25,11 @@ except:  # noqa: E722
 
 
 def main(
-    load_8bit: bool = False,
-    base_model: str = "baffo32/decapoda-research-llama-7B-hf",
-    lora_weights: str = "./lora-llama7b/sample_1024_epoch_5",
+    load_8bit: bool = True,
+    base_model: str = "meta-llama/Llama-2-7b-chat-hf",
+    lora_weights: str = "./lora-llama2-chat",
     test_data_path: str = "./data/movie/test.json",
-    result_json_data: str = "temp.json",
+    result_json_data: str = "llama2_chat_temp.json",
     batch_size: int = 32,
     share_gradio: bool = False,
 ):
@@ -46,7 +46,7 @@ def main(
     
     # temp_list = model_type.split('_')
     seed = 0
-    sample = 1024
+    sample = 64
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -68,7 +68,10 @@ def main(
         # data[train_sce][test_sce][model_name][seed][sample] = 
 
 
-    tokenizer = LlamaTokenizer.from_pretrained(base_model)
+    access_token = "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"
+    tokenizer = LlamaTokenizer.from_pretrained(base_model,
+                                               token = access_token,
+                                            )
     max_memory_mapping = {0: "24GiB", 1:"24GiB"}
     print("Loading Model...")
     if device == "cuda":
@@ -78,6 +81,7 @@ def main(
             torch_dtype=torch.float16,
             device_map="auto",
             max_memory = max_memory_mapping,
+            token = access_token,
         )
         model = PeftModel.from_pretrained(
             model,
