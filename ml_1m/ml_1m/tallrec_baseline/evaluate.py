@@ -68,9 +68,8 @@ def main(
         # data[train_sce][test_sce][model_name][seed][sample] = 
 
 
-    access_token = "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"
     tokenizer = LlamaTokenizer.from_pretrained(base_model,
-                                               token = access_token,
+                                               token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
                                             )
     max_memory_mapping = {0: "24GiB", 1:"24GiB"}
     print("Loading Model...")
@@ -81,7 +80,7 @@ def main(
             torch_dtype=torch.float16,
             device_map="auto",
             max_memory = max_memory_mapping,
-            token = access_token,
+            token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
         )
         model = PeftModel.from_pretrained(
             model,

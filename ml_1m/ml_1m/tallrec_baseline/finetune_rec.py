@@ -108,18 +108,17 @@ def train(
     if len(wandb_log_model) > 0:
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 
-    access_token = "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"
     model = LlamaForCausalLM.from_pretrained(
         base_model,
         load_in_8bit=True,
         torch_dtype=torch.float16,
         device_map=device_map,
         max_memory = max_memory_mapping,
-        token = access_token,
+        token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
     ).eval()
 
     tokenizer = LlamaTokenizer.from_pretrained(base_model,
-                                               token = access_token,)
+                                               token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),)
 
     tokenizer.pad_token_id = (
         0  # unk. we want this to be different from the eos token
