@@ -30,7 +30,7 @@ def train(
     train_data_path: str = "./data/movie/train.json",
     val_data_path: str = "./data/movie/valid.json",
     output_dir: str = "./lora_llama2_chat/sample_8_test",
-    sample: int = 32,
+    sample: int = 16,
     seed: int = 0,
     # training hyperparams
     batch_size: int = 128,
@@ -108,6 +108,15 @@ def train(
     if len(wandb_log_model) > 0:
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 
+    tokenizer = LlamaTokenizer.from_pretrained(base_model,
+                                               padding_side = "left",
+                                               add_eos_token = True,
+                                               add_bos_token = True,
+                                               token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
+                                            )
+
+    tokenizer.add_special_tokens({"pad_token":tokenizer.eos_token})
+    # tokenizer.padding_side = "left"  # Allow batched inference
     model = LlamaForCausalLM.from_pretrained(
         base_model,
         load_in_8bit=True,
@@ -116,15 +125,7 @@ def train(
         max_memory = max_memory_mapping,
         token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
     ).eval()
-
-    tokenizer = LlamaTokenizer.from_pretrained(base_model,
-                                               token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
-                                            )
-
-    tokenizer.pad_token_id = (
-        0  # unk. we want this to be different from the eos token
-    )
-    tokenizer.padding_side = "left"  # Allow batched inference
+    # model.resize_token_embeddings(len(tokenizer),pad_to_multiple_of=8)
 
     def tokenize(prompt, add_eos_token=True):
         # there's probably a way to do this with the tokenizer settings
@@ -133,35 +134,25 @@ def train(
             prompt,
             truncation=True,
             max_length=cutoff_len,
-            padding=False,
+            padding=True,
             return_tensors=None,
         )
-        if (
-            result["input_ids"][-1] != tokenizer.eos_token_id
-            and len(result["input_ids"]) < cutoff_len
-            and add_eos_token
-        ):
-            result["input_ids"].append(tokenizer.eos_token_id)
-            result["attention_mask"].append(1)
+        # if (
+        #     result["input_ids"][-1] != tokenizer.eos_token_id
+        #     and len(result["input_ids"]) < cutoff_len
+        #     and add_eos_token
+        # ):
+        #     result["input_ids"].append(tokenizer.eos_token_id)
+        #     result["attention_mask"].append(1)
 
         result["labels"] = result["input_ids"].copy()
+        # print(result["labels"])
 
         return result
 
     def generate_and_tokenize_prompt(data_point):
         full_prompt = generate_prompt(data_point)
         tokenized_full_prompt = tokenize(full_prompt)
-        print("TRAIN ON  INPUTS FLAG:", train_on_inputs)
-        if not train_on_inputs:
-            user_prompt = generate_prompt({**data_point, "output": ""})
-            tokenized_user_prompt = tokenize(user_prompt, add_eos_token=False)
-            user_prompt_len = len(tokenized_user_prompt["input_ids"])
-
-            tokenized_full_prompt["labels"] = [
-                -100
-            ] * user_prompt_len + tokenized_full_prompt["labels"][
-                user_prompt_len:
-            ]  # could be sped up, probably
         return tokenized_full_prompt
 
     model = prepare_model_for_int8_training(model)
@@ -216,6 +207,8 @@ def train(
     train_data["train"] = train_data["train"].shuffle(seed=seed).select(range(sample)) if sample > -1 else train_data["train"].shuffle(seed=seed)
     train_data["train"] = train_data["train"].shuffle(seed=seed)
     train_data = (train_data["train"].map(generate_and_tokenize_prompt))
+    # print("train_data[0]:", train_data[0])
+    # print(tokenizer.batch_decode(train_data[0]['labels'], skip_special_tokens=True, clean_up_tokenization_spaces=True))
     val_data = (val_data["train"].map(generate_and_tokenize_prompt))
     if not ddp and torch.cuda.device_count() > 1:
         model.is_parallelizable = True
@@ -240,13 +233,29 @@ def train(
         # print(f"logits dimension: {len(logits[0])}")
         print(f"len of labels: {labels.shape} --- labels: {labels}")
         # print(f"labels dimension: {len(labels[0])}")
+        # gts = torch.tensor([[num if num!=-100 else 32000 for num in label] for label in labels.tolist()])
+        gts = []
+        for label in labels.tolist():
+            temp = []
+            for num in label:
+                if num!=-100:
+                    temp.append(num)
+                else:
+                    temp.append(2)
+            gts.append(temp)
+        gts = torch.tensor(gts)
+
+        print("labels:", labels)
+        print("gts:", gts)
+        print("GT:", tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True))
 
         labels_index = torch.argwhere(torch.bitwise_or(labels == 8241, labels == 3782))
         gold = torch.where(labels[labels_index[:, 0], labels_index[:, 1]] == 3782, 0, 1)
         labels_index[: , 1] = labels_index[: , 1] - 1
-        logits = logits.softmax(dim=-1)
+        # logits = logits.softmax(dim=-1)
         argmax_indices = torch.argmax(logits, dim=-1)
         print("Predicted Indices:", argmax_indices)
+        print("Predicted:", tokenizer.batch_decode(argmax_indices, skip_special_tokens=False, clean_up_tokenization_spaces=True))
         logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3782, 8241]], dim = -1)
         # print(logits)
         # print(logits[:, 1][2::3], gold[2::3])
@@ -289,8 +298,11 @@ def train(
             # run_name=wandb_run_name if use_wandb else None,
             # eval_accumulation_steps=10,
         ),
-        data_collator=transformers.DataCollatorForSeq2Seq(
-            tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
+        # data_collator=transformers.DataCollatorForSeq2Seq(
+        #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
+        # ),
+        data_collator=transformers.DataCollatorForLanguageModeling(
+            tokenizer, pad_to_multiple_of=8, return_tensors="pt", mlm=False,
         ),
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
@@ -322,8 +334,7 @@ def train(
 def generate_prompt(data_point):
     # sorry about the formatting disaster gotta move fast
     if data_point["input"]:
-        return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.  # noqa: E501
-
+        return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 ### Instruction:
 {data_point["instruction"]}
 
@@ -333,8 +344,7 @@ def generate_prompt(data_point):
 ### Response:
 {data_point["output"]}"""
     else:
-        return f"""Below is an instruction that describes a task. Write a response that appropriately completes the request.  # noqa: E501
-
+        return f"""Below is an instruction that describes a task. Write a response that appropriately completes the request.
 ### Instruction:
 {data_point["instruction"]}
 
