@@ -43,7 +43,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_id,
 # tokenizer.add_special_tokens({"pad_token":"[PAD]"})
 tokenizer.pad_token = tokenizer.eos_token
 
-max_memory_mapping = {2: "15GiB", 3: "15GiB", "cpu":"20GiB"}
+max_memory_mapping = {1: "15GiB", 2: "15GiB", "cpu":"20GiB"}
 # max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
@@ -65,10 +65,10 @@ def getZeroshotInference(model, content):
     
     outputs = model.generate(**model_inputs,
                              pad_token_id = tokenizer.eos_token_id,
-                             max_new_tokens=512,
+                             max_new_tokens=256,
                              do_sample = True,
                              temperature=0.01,
-                             top_p=0.9
+                             top_p=0.75
                             )
     # print("Outputs: ", outputs)
     response = tokenizer.batch_decode(outputs, skip_special_tokens=True)
@@ -136,7 +136,7 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
     # if user%100 == 0:
     #     print(user, reasoning_train_dict[user])
     #     print("*"*100)
-    if cnt == 16:
+    if cnt == batch_size*2:
         break
 print("Time taken for all:", time.time() - start)
 f = open("./reasoning_data/reasoning_train_dict.pkl","wb")
