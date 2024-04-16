@@ -65,19 +65,19 @@ def getZeroshotInference(model, content):
     
     outputs = model.generate(**model_inputs,
                              pad_token_id = tokenizer.eos_token_id,
-                             max_new_tokens=256,
+                             max_new_tokens=512,
                              do_sample = True,
                              temperature=0.01,
                              top_p=0.9
                             )
-    print("Outputs: ", outputs)
+    # print("Outputs: ", outputs)
     response = tokenizer.batch_decode(outputs, skip_special_tokens=True)
     only_response = [response[i].strip()[len(prompt):] for i, prompt in enumerate(prompts)]
     # print("Response:", response[len(prompt):])
     return only_response
 
 print(f"Loading prompt dataset...")
-with open('./reasoning_prompt_data/reasoning_prompt_train.pkl', 'rb') as f:
+with open('./reasoning_prompt_data/reasoning_prompt_train_new.pkl', 'rb') as f:
     prompt_dataset = pickle.load(f)
 print(len(prompt_dataset))
 for user, content in prompt_dataset.items():
@@ -117,8 +117,8 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
     if cnt%batch_size == 0:
         print('_'*100)
         print("Batch Number:", cnt//batch_size)
-        print("Batch prompts: ",len(batch_prompts), batch_prompts)
-        print('-'*100)
+        # print("Batch prompts: ",len(batch_prompts), batch_prompts)
+        # print('-'*100)
         batch_responses = getZeroshotInference(model, batch_prompts)
         print("Batch Responses: ",len(batch_responses), batch_responses)
 
