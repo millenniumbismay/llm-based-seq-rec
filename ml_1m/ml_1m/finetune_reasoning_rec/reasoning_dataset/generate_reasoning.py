@@ -117,14 +117,14 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
     if cnt%batch_size == 0:
         print('_'*100)
         print("Batch Number:", cnt//batch_size)
-        # print("Batch prompts: ",len(batch_prompts), batch_prompts)
+        print("Batch prompts: ",len(batch_prompts), batch_prompts)
         # print('-'*100)
         batch_responses = getZeroshotInference(model, batch_prompts)
-        print("Batch Responses: ",len(batch_responses), batch_responses)
+        # print("Batch Responses: ",len(batch_responses), batch_responses)
 
         for i in range(len(batch_users)):
-            reasoning_train_dict[batch_users[i]] = batch_responses[i]
-        print(len(reasoning_train_dict), reasoning_train_dict)
+            reasoning_train_dict[batch_users[i]] = batch_responses[i] + prompt_dataset[batch_users[i]][1]
+        print("reasoning_train_dict:", len(reasoning_train_dict), reasoning_train_dict)
         batch_prompts = []
         batch_users = []
         print("Time taken for batch:", time.time() - batch_start)
