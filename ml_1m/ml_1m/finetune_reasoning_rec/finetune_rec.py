@@ -298,12 +298,12 @@ def train(
             # run_name=wandb_run_name if use_wandb else None,
             # eval_accumulation_steps=10,
         ),
-        # data_collator=transformers.DataCollatorForSeq2Seq(
-        #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
-        # ),
-        data_collator=transformers.DataCollatorForLanguageModeling(
-            tokenizer, pad_to_multiple_of=8, return_tensors="pt", mlm=False,
+        data_collator=transformers.DataCollatorForSeq2Seq(
+            tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
         ),
+        # data_collator=transformers.DataCollatorForLanguageModeling(
+        #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", mlm=False,
+        # ),
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
         callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]

@@ -43,7 +43,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_id,
 # tokenizer.add_special_tokens({"pad_token":"[PAD]"})
 tokenizer.pad_token = tokenizer.eos_token
 
-max_memory_mapping = {2: "22GiB", 3: "22GiB", "cpu":"20GiB"}
+max_memory_mapping = {0: "23GiB", 1: "23GiB", "cpu":"20GiB"}
 # max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
@@ -109,8 +109,8 @@ batch_start = time.time()
 for user, content in tqdm.tqdm(prompt_dataset.items()):
     # print(user, content)
     cnt += 1
-    # if cnt <= 480:
-    #     continue
+    if cnt <= 1120:
+        continue
     batch_prompts.append(content[0])
     batch_users.append(user)
 
@@ -137,7 +137,7 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
     # if user%100 == 0:
     #     print(user, reasoning_train_dict[user])
     #     print("*"*100)
-    if cnt == batch_size*70:
+    if cnt == batch_size*200:
         break
 print("Time taken for all:", time.time() - start)
 f = open("./reasoning_data/reasoning_valid_dict.pkl","wb")
