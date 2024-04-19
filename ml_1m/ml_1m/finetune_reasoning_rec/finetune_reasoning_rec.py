@@ -8,6 +8,7 @@ import torch
 import transformers
 from datasets import load_dataset
 from transformers import EarlyStoppingCallback
+from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 
 """
 Unused imports:
@@ -33,11 +34,11 @@ def train(
     sample: int = 16,
     seed: int = 0,
     # training hyperparams
-    batch_size: int = 128,
-    micro_batch_size: int = 32,
-    num_epochs: int = 5,
+    batch_size: int = 2,
+    micro_batch_size: int = 1,
+    num_epochs: int = 2,
     learning_rate: float = 1e-4,
-    cutoff_len: int = 512,
+    cutoff_len: int = 2048,
     # lora hyperparams
     lora_r: int = 8,
     lora_alpha: int = 16,
@@ -89,7 +90,7 @@ def train(
     # print(f"gradient_accumulation_steps: {gradient_accumulation_steps}")
 
     device_map = 'auto'
-    max_memory_mapping = {0: "23GiB", 1: "23GiB"}
+    max_memory_mapping = {0: "10GiB", 1: "10GiB", 2: "10GiB", 3: "10GiB"}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1
     if ddp:
@@ -203,13 +204,19 @@ def train(
             print(f"Checkpoint {checkpoint_name} not found")
 
     model.print_trainable_parameters()  # Be more transparent about the % of trainable params.
-
+    # print(train_data)
     train_data["train"] = train_data["train"].shuffle(seed=seed).select(range(sample)) if sample > -1 else train_data["train"].shuffle(seed=seed)
     train_data["train"] = train_data["train"].shuffle(seed=seed)
     train_data = (train_data["train"].map(generate_and_tokenize_prompt))
+    print(train_data)
+    # print(train_data[0])
     # print("train_data[0]:", train_data[0])
     # print(tokenizer.batch_decode(train_data[0]['labels'], skip_special_tokens=True, clean_up_tokenization_spaces=True))
     val_data = (val_data["train"].map(generate_and_tokenize_prompt))
+    
+    # train_data = train_data.remove_columns(train_data["train"].column_names)
+    # print(train_data)
+
     if not ddp and torch.cuda.device_count() > 1:
         model.is_parallelizable = True
         model.model_parallel = True
@@ -229,9 +236,9 @@ def train(
         Original Trainer may have a memory leak. 
         This is a workaround to avoid storing too many tensors that are not needed.
         """
-        print(f"len of logits: {logits.shape}")
+        # print(f"len of logits: {logits.shape}")
         # print(f"logits dimension: {len(logits[0])}")
-        print(f"len of labels: {labels.shape} --- labels: {labels}")
+        # print(f"len of labels: {labels.shape} --- labels: {labels}")
         # print(f"labels dimension: {len(labels[0])}")
         # gts = torch.tensor([[num if num!=-100 else 32000 for num in label] for label in labels.tolist()])
         gts = []
@@ -245,17 +252,17 @@ def train(
             gts.append(temp)
         gts = torch.tensor(gts)
 
-        print("labels:", labels)
-        print("gts:", gts)
-        print("GT:", tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True))
+        # print("labels:", labels)
+        # print("gts:", gts)
+        # print("GT:", tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True))
 
         labels_index = torch.argwhere(torch.bitwise_or(labels == 8241, labels == 3782))
         gold = torch.where(labels[labels_index[:, 0], labels_index[:, 1]] == 3782, 0, 1)
         labels_index[: , 1] = labels_index[: , 1] - 1
         # logits = logits.softmax(dim=-1)
         argmax_indices = torch.argmax(logits, dim=-1)
-        print("Predicted Indices:", argmax_indices)
-        print("Predicted:", tokenizer.batch_decode(argmax_indices, skip_special_tokens=False, clean_up_tokenization_spaces=True))
+        # print("Predicted Indices:", argmax_indices)
+        # print("Predicted:", tokenizer.batch_decode(argmax_indices, skip_special_tokens=False, clean_up_tokenization_spaces=True))
         logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3782, 8241]], dim = -1)
         # print(logits)
         # print(logits[:, 1][2::3], gold[2::3])
@@ -270,8 +277,58 @@ def train(
             eval_step = sample / 128 * 2
     # print("sample: ", sample)
     
-    trainer = transformers.Trainer(
-        model=model,
+    # trainer = transformers.Trainer(
+    #     model=model,
+    #     train_dataset=train_data,
+    #     eval_dataset=val_data,
+    #     args=transformers.TrainingArguments(
+    #         per_device_train_batch_size=micro_batch_size,
+    #         gradient_accumulation_steps=gradient_accumulation_steps,
+    #         warmup_steps=20,
+    #         num_train_epochs=num_epochs,
+    #         learning_rate=learning_rate,
+    #         fp16=True,
+    #         logging_steps=20,
+    #         optim="adamw_torch",
+    #         evaluation_strategy="steps",
+    #         save_strategy="steps",
+    #         eval_steps=eval_step,
+    #         save_steps=eval_step,
+    #         output_dir=output_dir,
+    #         save_total_limit=1,
+    #         load_best_model_at_end=True,
+    #         metric_for_best_model="eval_auc",
+    #         ddp_find_unused_parameters=False if ddp else None,
+    #         group_by_length=group_by_length,
+    #         report_to=None,
+    #         # report_to="wandb" if use_wandb else None,
+    #         # run_name=wandb_run_name if use_wandb else None,
+    #         # eval_accumulation_steps=10,
+    #     ),
+    #     # data_collator=transformers.DataCollatorForSeq2Seq(
+    #     #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
+    #     # ),
+    #     data_collator=transformers.DataCollatorForLanguageModeling(
+    #         tokenizer, pad_to_multiple_of=8, return_tensors="pt", mlm=False,
+    #     ),
+    #     compute_metrics=compute_metrics,
+    #     preprocess_logits_for_metrics=preprocess_logits_for_metrics,
+    #     callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]
+    # )
+
+    ### Using SFTTrainer
+    def formatting_prompts_func(example):
+        output_texts = []
+        for i in range(len(example['instruction'])):
+            text = f"### Instruction: {example['instruction'][i]}\n ### Input: {example['input'][i]}\n ### Response: {example['output'][i]}"
+            output_texts.append(text)
+        return output_texts
+
+    response_template = "### Response:"
+    collator = DataCollatorForCompletionOnlyLM(response_template, tokenizer=tokenizer, mlm=False)
+
+    trainer = SFTTrainer(
+        model,
         train_dataset=train_data,
         eval_dataset=val_data,
         args=transformers.TrainingArguments(
@@ -298,12 +355,15 @@ def train(
             # run_name=wandb_run_name if use_wandb else None,
             # eval_accumulation_steps=10,
         ),
-        data_collator=transformers.DataCollatorForSeq2Seq(
-            tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
-        ),
+        # data_collator=transformers.DataCollatorForSeq2Seq(
+        #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
+        # ),
         # data_collator=transformers.DataCollatorForLanguageModeling(
         #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", mlm=False,
         # ),
+        max_seq_length = 2048,
+        formatting_func = formatting_prompts_func,
+        data_collator = collator,
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
         callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]
@@ -333,7 +393,7 @@ def train(
 
 def generate_prompt(data_point):
     return f"""### Instruction:
-    You are an expert movie critic and recommender. Below is an instruction to generate reasoning and predict whether a given user likes or dislikes a target movie.
+    {data_point["instruction"]}
 ### Input:
 {data_point["input"]}
 ### Response:
