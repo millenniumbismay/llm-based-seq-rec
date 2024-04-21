@@ -6,6 +6,7 @@ import tqdm
 import torch
 import os
 import time
+import gc
 print(torch.__version__)
 
 from torch import cuda
@@ -43,7 +44,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_id,
 # tokenizer.add_special_tokens({"pad_token":"[PAD]"})
 tokenizer.pad_token = tokenizer.eos_token
 
-max_memory_mapping = {0: "12GiB", 1: "10GiB", 2: "10GiB", 3: "12GiB", "cpu":"20GiB"}
+max_memory_mapping = {0: "23GiB", 1: "23GiB", "cpu":"20GiB"}
 # max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
@@ -109,8 +110,8 @@ batch_start = time.time()
 for user, content in tqdm.tqdm(prompt_dataset.items()):
     # print(user, content)
     cnt += 1
-    # if cnt <= 1120:
-    #     continue
+    if cnt <= 4800:
+        continue
     batch_prompts.append(content[0])
     batch_users.append(user)
 
@@ -134,11 +135,12 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
         f2 = open("./reasoning_data/reasoning_test_dict.pkl","wb")
         pickle.dump(reasoning_train_dict,f2)
         f2.close()
+    gc.collect()
     # if user%100 == 0:
     #     print(user, reasoning_train_dict[user])
     #     print("*"*100)
-    if cnt == batch_size*300:
-        break
+    # if cnt == batch_size*300:
+    #     break
 print("Time taken for all:", time.time() - start)
 f = open("./reasoning_data/reasoning_test_dict.pkl","wb")
 pickle.dump(reasoning_train_dict,f)

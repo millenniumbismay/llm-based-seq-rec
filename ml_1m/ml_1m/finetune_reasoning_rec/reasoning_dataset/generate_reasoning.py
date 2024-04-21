@@ -109,7 +109,7 @@ batch_start = time.time()
 for user, content in tqdm.tqdm(prompt_dataset.items()):
     # print(user, content)
     cnt += 1
-    if cnt <= 3200:
+    if cnt <= 4800:
         continue
     batch_prompts.append(content[0])
     batch_users.append(user)
@@ -137,7 +137,7 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
     # if user%100 == 0:
     #     print(user, reasoning_train_dict[user])
     #     print("*"*100)
-    if cnt == batch_size*300:
+    if cnt == batch_size*350:
         break
 print("Time taken for all:", time.time() - start)
 f = open("./reasoning_data/reasoning_train_dict.pkl","wb")

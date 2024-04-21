@@ -26,7 +26,7 @@ from sklearn.metrics import roc_auc_score
 
 def train(
     # model/data params
-    base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
+    base_model: str = "meta-llama/Llama-2-7b-chat-hf", ### "meta-llama/Meta-Llama-3-8B-Instruct", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie/train.json",
     val_data_path: str = "./final_data/movie/valid.json",
     output_dir: str = "./lora_llama2_chat/sample_8_test",
@@ -34,7 +34,7 @@ def train(
     seed: int = 0,
     # training hyperparams
     batch_size: int = 2,
-    micro_batch_size: int = 1,
+    micro_batch_size: int = 1, ### set to batch_size//2
     num_epochs: int = 2,
     learning_rate: float = 1e-4,
     cutoff_len: int = 2048,
@@ -125,7 +125,7 @@ def train(
         max_memory = max_memory_mapping,
         token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
     ).eval()
-    # model.resize_token_embeddings(len(tokenizer),pad_to_multiple_of=8)
+    model.resize_token_embeddings(len(tokenizer),pad_to_multiple_of=8)
 
     def tokenize(prompt, add_eos_token=True):
         # there's probably a way to do this with the tokenizer settings
@@ -253,19 +253,42 @@ def train(
 
         # print("labels:", labels)
         # print("gts:", gts)
-        print("GT:", tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True))
+        gt_texts = tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True)
+        print("GT:", len(gt_texts), gt_texts)
+
+        ### Generate output from model - 
+        gt_inputs = [text.split("[/INST]")[0]+"[/INST]" for text in gt_texts]
+        gt_labels = [text.split("[/INST]")[1] for text in gt_texts]
+        print("="*100)
+        print("GT Inputs:", len(gt_inputs), gt_inputs)
+        print("="*100)
+        print("GT Labels:", len(gt_labels), gt_labels)
+
+        intermediate_inputs = tokenizer(
+            gt_inputs,
+            truncation=True,
+            max_length=cutoff_len,
+            padding=True,
+            return_tensors=None,
+        )
+        intermediate_generated_ids = model.generate(
+                                    intermediate_inputs.input_ids
+                                    )
+        intermediate_outputs = tokenizer.batch_decode(intermediate_generated_ids)
+        print("*"*100)
+        print("Intermediate Outputs:", len(intermediate_outputs), intermediate_outputs)
 
         labels_index = torch.argwhere(torch.bitwise_or(labels == 8241, labels == 3782))
         gold = torch.where(labels[labels_index[:, 0], labels_index[:, 1]] == 3782, 0, 1)
         labels_index[: , 1] = labels_index[: , 1] - 1
-        # logits = logits.softmax(dim=-1)
+        logits = logits.softmax(dim=-1)
         argmax_indices = torch.argmax(logits, dim=-1)
         # print("Predicted Indices:", argmax_indices)
         print("-"*100)
         print("Predicted:", tokenizer.batch_decode(argmax_indices, skip_special_tokens=False, clean_up_tokenization_spaces=True))
         logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3782, 8241]], dim = -1)
-        # print(logits)
-        # print(logits[:, 1][2::3], gold[2::3])
+        print(logits)
+        print(logits[:, 1][2::3], gold[2::3])
         return logits[:, 1][2::3], gold[2::3]
 
     os.environ["WANDB_DISABLED"] = "true"
@@ -305,6 +328,9 @@ def train(
             # run_name=wandb_run_name if use_wandb else None,
             # eval_accumulation_steps=10,
         ),
+        # data_collator = transformers.DataCollatorWithPadding(
+        #     tokenizer, pad_to_multiple_of = 8, return_tensors="pt", padding = True,
+        #     ),
         data_collator=transformers.DataCollatorForSeq2Seq(
             tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
         ),
@@ -370,15 +396,15 @@ def train(
     # )
     model.config.use_cache = False
 
-    # old_state_dict = model.state_dict
-    # model.state_dict = (
-    #     lambda self, *_, **__: get_peft_model_state_dict(
-    #         self, old_state_dict()
-    #     )
-    # ).__get__(model, type(model))
+    old_state_dict = model.state_dict
+    model.state_dict = (
+        lambda self, *_, **__: get_peft_model_state_dict(
+            self, old_state_dict()
+        )
+    ).__get__(model, type(model))
 
-    # if torch.__version__ >= "2" and sys.platform != "win32":
-    #     model = torch.compile(model)
+    if torch.__version__ >= "2" and sys.platform != "win32":
+        model = torch.compile(model)
 
     # trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     trainer.train()
@@ -392,12 +418,7 @@ def train(
 
 
 def generate_prompt(data_point):
-    return f"""### Instruction:
-    {data_point["instruction"]}
-### Input:
-{data_point["input"]}
-### Response:
-{data_point["output"]}"""
+    return f"""[INST]{data_point["instruction"]}{data_point["input"]}[/INST]{data_point["output"]}"""
 
 
 if __name__ == "__main__":
