@@ -6,6 +6,7 @@ import tqdm
 import torch
 import os
 import time
+import gc
 print(torch.__version__)
 
 from torch import cuda
@@ -107,9 +108,10 @@ batch_users = []
 start = time.time()
 batch_start = time.time()
 for user, content in tqdm.tqdm(prompt_dataset.items()):
+    gc.collect()
     # print(user, content)
     cnt += 1
-    if cnt <= 1120:
+    if cnt <= 3200:
         continue
     batch_prompts.append(content[0])
     batch_users.append(user)
@@ -134,11 +136,12 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
         f2 = open("./reasoning_data/reasoning_valid_dict.pkl","wb")
         pickle.dump(reasoning_train_dict,f2)
         f2.close()
+    gc.collect()
     # if user%100 == 0:
     #     print(user, reasoning_train_dict[user])
     #     print("*"*100)
-    if cnt == batch_size*200:
-        break
+    # if cnt == batch_size*200:
+    #     break
 print("Time taken for all:", time.time() - start)
 f = open("./reasoning_data/reasoning_valid_dict.pkl","wb")
 pickle.dump(reasoning_train_dict,f)
