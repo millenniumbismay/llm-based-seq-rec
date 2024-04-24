@@ -89,7 +89,7 @@ def train(
     # print(f"gradient_accumulation_steps: {gradient_accumulation_steps}")
 
     device_map = 'auto'
-    max_memory_mapping = {0: "23GiB", 1: "23GiB"}
+    max_memory_mapping = {0: "14GiB", 1: "10GiB", 2: "10GiB", 3: "12GiB"}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1
     if ddp:
@@ -254,7 +254,7 @@ def train(
         # print("labels:", labels)
         # print("gts:", gts)
         gt_texts = tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True)
-        print("GT:", len(gt_texts), gt_texts)
+        # print("GT:", len(gt_texts), gt_texts)
 
         ### Generate output from model - 
         gt_inputs = [text.split("[/INST]")[0]+"[/INST]" for text in gt_texts]
@@ -271,6 +271,8 @@ def train(
             padding=True,
             return_tensors=None,
         )
+        print("*"*100)
+        print("Intermediate Inputs:", intermediate_inputs)
         intermediate_generated_ids = model.generate(
                                     intermediate_inputs.input_ids
                                     )
