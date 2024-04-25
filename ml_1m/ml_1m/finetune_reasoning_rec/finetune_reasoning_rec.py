@@ -8,6 +8,7 @@ import fire
 import torch
 import transformers
 from datasets import load_dataset
+import torch.nn.functional as F
 from transformers import EarlyStoppingCallback
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 
@@ -25,6 +26,11 @@ from peft import (  # noqa: E402
 )
 from transformers import LlamaForCausalLM, LlamaTokenizer  # noqa: F402
 from sklearn.metrics import roc_auc_score
+# from bert_score import BERTScorer
+
+# from evaluate import load
+# bertscore = load('bertscore')
+
 import gc
 
 def train(
@@ -216,11 +222,13 @@ def train(
     train_data["train"] = train_data["train"].shuffle(seed=seed)
     train_data = (train_data["train"].map(generate_and_tokenize_prompt))
     print(train_data)
+    # print(train_data["text"])
     # print(train_data[0])
     # print("train_data[0]:", train_data[0])
     # print(tokenizer.batch_decode(train_data[0]['labels'], skip_special_tokens=True, clean_up_tokenization_spaces=True))
     val_data = (val_data["train"].map(generate_and_tokenize_prompt))
     print(val_data)
+    print(val_data['text'][:16])
     
     # train_data = train_data.remove_columns(train_data["train"].column_names)
     # print(train_data)
@@ -248,7 +256,23 @@ def train(
         # print(pre[1], pre[0])
         auc = roc_auc_score(pre[1], pre[0])
         return {'auc': auc}
+
+    def get_reconstruction_loss(tensor1, tensor2):
+        reconstruction_losses = []
+        for i in range(len(tensor1)):
+            similarity = F.cosine_similarity(tensor1[i].unsqueeze(0), tensor2[i].unsqueeze(0), dim=1)
+            reconstruction_losses.append(1- similarity.item())
+        print("Reconstruction Losses:", reconstruction_losses)
+        return np.average(reconstruction_losses)
     
+    def cosine_similarity(tensor1, tensor2):
+        cosine_similarities = []
+        for i in range(len(tensor1)):
+            similarity = F.cosine_similarity(tensor1[i].unsqueeze(0), tensor2[i].unsqueeze(0), dim=1)
+            cosine_similarities.append(similarity.item())
+        print("Cosine Similarities:", cosine_similarities)
+        return np.average(cosine_similarities)
+
     def preprocess_logits_for_metrics(logits, labels):
         """
         Original Trainer may have a memory leak. 
@@ -260,24 +284,35 @@ def train(
         # print(f"logits dimension: {len(logits[0])}")
         print(f"len of labels: {labels.shape} --- {labels[0]}")
         # print(f"labels dimension: {len(labels[0])}")
-        ### Uncomment from here
-        mask_end_idx_list = []
         gts = []
         for label in labels.tolist():
-            mask_end_idx = rindex(label[:-1], -100)
-            mask_end_idx_list.append(mask_end_idx)
-            gts.append(label[mask_end_idx+1:-1])
+            temp = []
+            for num in label:
+                if num!=-100:
+                    temp.append(num)
+                else:
+                    temp.append(2)
+            gts.append(temp)
         gts = torch.tensor(gts)
-        print("After removing mask tokens:", gts.shape, gts[0])
-
+        ### Uncomment from here
+        mask_end_idx_list = []
+        for label in labels.tolist():
+            # print("label:", len(label), label)
+            mask_end_idx = rindex(label[:-1], -100)
+            # print("mask_end_idx:", mask_end_idx)
+            mask_end_idx_list.append(mask_end_idx)
+            # print("After removing masks:", label[mask_end_idx+1:-1])
+        print("Mask ends:", len(mask_end_idx_list), mask_end_idx_list)
         # print("labels:", labels)
         # print("GT:", tokenizer.batch_decode(labels, skip_special_tokens=False, clean_up_tokenization_spaces=True))
         # print("gts:", gts)
-        print("GT:", tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True))
+        gts_text = tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True)
+        print("GT:", gts_text)
 
-        labels_index = torch.argwhere(torch.bitwise_or(labels == 8241, labels == 3782))
-        gold = torch.where(labels[labels_index[:, 0], labels_index[:, 1]] == 3782, 0, 1)
-        labels_index[: , 1] = labels_index[: , 1] - 1
+        # labels_index = torch.argwhere(torch.bitwise_or(labels == 8241, labels == 3782))
+        # gold = torch.where(labels[labels_index[:, 0], labels_index[:, 1]] == 3782, 0, 1)
+        # labels_index[: , 1] = labels_index[: , 1] - 1
+
         # logits = logits.softmax(dim=-1)
         argmax_indices = torch.argmax(logits, dim=-1)
         print("Predicted Indices:", argmax_indices.shape, argmax_indices)
@@ -285,12 +320,47 @@ def train(
         preds = []
         k = 0
         for predicted in argmax_indices.tolist():
-            preds.append(predicted[mask_end_idx_list[k]+1:])
+            temp = [2]*mask_end_idx_list[k]
+            temp.extend(predicted[mask_end_idx_list[k]:])
+            preds.append(temp)
             k += 1
-        argmax_indices = torch.tensor(preds)
+        preds = torch.tensor(preds)
 
         print("-"*100)
-        print("Predicted:", tokenizer.batch_decode(argmax_indices, skip_special_tokens=False, clean_up_tokenization_spaces=True))
+        preds_text = tokenizer.batch_decode(preds, skip_special_tokens=False, clean_up_tokenization_spaces=True)
+        print("Predicted:", preds_text)
+        
+        # gts = gts.float()
+        # preds = preds.float()
+        ### For similarity
+        sim_loss = cosine_similarity(gts.float(), preds.float())
+        print("sim_loss:", sim_loss)
+
+        ### For BERTScore
+        # scorer = BERTScorer(model_type = 'microsoft/deberta-large-mnli')
+        # bert_score_loss = scorer.score(preds_text, gts_text)
+        # print("bert_score_loss:", bert_score_loss)
+
+        ### For Reconstruction Loss
+        # reconstruction_loss = get_reconstruction_loss(gts.float(), preds.float())
+        # print("reconstruction_loss:", reconstruction_loss)
+
+        ### For AUC
+        print(f"gts:\n{gts[0][-10:]}\n{gts[1][-10:]}")
+        # labels_index = torch.argwhere(torch.bitwise_or(gts == 8241, gts == 3782))
+        labels_index = torch.argwhere(torch.bitwise_or(gts == 3869, gts == 1939)) ### Yes - 3869, No - 1939
+        gold = torch.where(gts[labels_index[:, 0], labels_index[:, 1]] == 1939, 0, 1)
+        labels_index[: , 1] = labels_index[: , 1] - 1
+        print("labels_index:", labels_index)
+        print("Gold:", gold)
+
+        logits = logits.softmax(dim=-1)
+        print(f"len of logits: {logits.shape} --- {logits[0]}")
+        for l in labels_index:
+            print("Probability of Yes", logits[l[0]][-3][3869])
+            print("Probability of No", logits[l[0]][-3][1939])
+
+
         # logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3782, 8241]], dim = -1)
         # # print(logits)
         # # print(logits[:, 1][2::3], gold[2::3])
@@ -390,7 +460,7 @@ def train(
             report_to=None,
             # report_to="wandb" if use_wandb else None,
             # run_name=wandb_run_name if use_wandb else None,
-            eval_accumulation_steps=1,
+            eval_accumulation_steps=2,
         ),
         # data_collator=transformers.DataCollatorForSeq2Seq(
         #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
