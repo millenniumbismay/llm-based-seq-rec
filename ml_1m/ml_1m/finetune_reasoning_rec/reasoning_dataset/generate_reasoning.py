@@ -43,7 +43,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_id,
 # tokenizer.add_special_tokens({"pad_token":"[PAD]"})
 tokenizer.pad_token = tokenizer.eos_token
 
-max_memory_mapping = {2: "23GiB", 3: "23GiB", "cpu":"20GiB"}
+max_memory_mapping = {0: "23GiB", 1: "23GiB", "cpu":"20GiB"}
 # max_memory_mapping = {0: "10GiB", 1: "9GiB", 2: "9GiB", 3: "10GiB", "cpu":"20GiB"}
 model = AutoModelForCausalLM.from_pretrained(model_id,
                                              device_map = 'auto',
@@ -77,16 +77,17 @@ def getZeroshotInference(model, content):
     return only_response
 
 print(f"Loading prompt dataset...")
-with open('./reasoning_prompt_data/reasoning_prompt_train_new.pkl', 'rb') as f:
+with open('./reasoning_prompt_data/reasoning_prompt_train_wo_profile.pkl', 'rb') as f:
     prompt_dataset = pickle.load(f)
 print(len(prompt_dataset))
 for user, content in prompt_dataset.items():
     print(user, content)
     break
 
-if os.path.isfile('./reasoning_data/reasoning_train_dict.pkl'):
+target_path = './reasoning_data_wo_profile/reasoning_train_dict.pkl'
+if os.path.isfile(target_path):
     print("Loading reasoning_train_dict...")
-    with open('./reasoning_data/reasoning_train_dict.pkl', 'rb') as f:
+    with open(target_path, 'rb') as f:
         reasoning_train_dict = pickle.load(f)
     print("Number of users completed:", len(reasoning_train_dict))
     for user, inference in reasoning_train_dict.items():
@@ -109,7 +110,7 @@ batch_start = time.time()
 for user, content in tqdm.tqdm(prompt_dataset.items()):
     # print(user, content)
     cnt += 1
-    if cnt <= 5600:
+    if cnt <= 3200:
         continue
     batch_prompts.append(content[0])
     batch_users.append(user)
@@ -131,15 +132,15 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
         batch_start = time.time()
     if cnt%(batch_size*5)== 0:
         print(f"Saving at {cnt}...")
-        f2 = open("./reasoning_data/reasoning_train_dict.pkl","wb")
+        f2 = open(target_path,"wb")
         pickle.dump(reasoning_train_dict,f2)
         f2.close()
     # if user%100 == 0:
     #     print(user, reasoning_train_dict[user])
     #     print("*"*100)
-    # if cnt == batch_size*350:
-    #     break
+    if cnt == batch_size*300:
+        break
 print("Time taken for all:", time.time() - start)
-f = open("./reasoning_data/reasoning_train_dict.pkl","wb")
+f = open(target_path,"wb")
 pickle.dump(reasoning_train_dict,f)
 f.close()

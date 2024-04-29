@@ -78,16 +78,18 @@ def getZeroshotInference(model, content):
     return only_response
 
 print(f"Loading prompt dataset...")
-with open('./reasoning_prompt_data/reasoning_prompt_valid_wo_profile.pkl', 'rb') as f:
+prompt_path = './reasoning_prompt_data/reasoning_prompt_test_wo_profile.pkl'
+with open(prompt_path, 'rb') as f:
     prompt_dataset = pickle.load(f)
 print(len(prompt_dataset))
 for user, content in prompt_dataset.items():
     print(user, content)
     break
 
-if os.path.isfile('./reasoning_data_wo_profile/reasoning_valid_dict.pkl'):
+target_path = './reasoning_data_wo_profile/reasoning_test_dict.pkl'
+if os.path.isfile(target_path):
     print("Loading reasoning_valid_dict...")
-    with open('./reasoning_data_wo_profile/reasoning_valid_dict.pkl', 'rb') as f:
+    with open(target_path, 'rb') as f:
         reasoning_train_dict = pickle.load(f)
     print("Number of users completed:", len(reasoning_train_dict))
     for user, inference in reasoning_train_dict.items():
@@ -111,7 +113,7 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
     gc.collect()
     # print(user, content)
     cnt += 1
-    # if cnt <= 3200:
+    # if cnt <= 6032:
     #     continue
     batch_prompts.append(content[0])
     batch_users.append(user)
@@ -133,7 +135,7 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
         batch_start = time.time()
     if cnt%(batch_size*5)== 0:
         print(f"Saving at {cnt}...")
-        f2 = open("./reasoning_data_wo_profile/reasoning_valid_dict.pkl","wb")
+        f2 = open(target_path,"wb")
         pickle.dump(reasoning_train_dict,f2)
         f2.close()
     gc.collect()
@@ -143,6 +145,6 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
     if cnt == batch_size*150:
         break
 print("Time taken for all:", time.time() - start)
-f = open("./reasoning_data_wo_profile/reasoning_valid_dict.pkl","wb")
+f = open(target_path,"wb")
 pickle.dump(reasoning_train_dict,f)
 f.close()
