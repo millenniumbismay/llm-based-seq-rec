@@ -37,16 +37,16 @@ def train(
     # model/data params
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie/train.json",
-    val_data_path: str = "./final_data/movie_wo_profile/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample_8_test",
-    sample: int = 16,
+    val_data_path: str = "./final_data/movie/valid.json",
+    output_dir: str = "./lora_llama2_chat/sample_16_test",
+    sample: int = 64,
     seed: int = 0,
     # training hyperparams
-    batch_size: int = 4,
-    micro_batch_size: int = 2,
+    batch_size: int = 8,
+    micro_batch_size: int = 4,
     num_epochs: int = 2,
     learning_rate: float = 1e-4,
-    cutoff_len: int = 2048,
+    cutoff_len: int = 2100,
     # lora hyperparams
     lora_r: int = 8,
     lora_alpha: int = 16,
@@ -221,13 +221,17 @@ def train(
     train_data["train"] = train_data["train"].shuffle(seed=seed).select(range(sample)) if sample > -1 else train_data["train"].shuffle(seed=seed)
     train_data["train"] = train_data["train"].shuffle(seed=seed)
     train_data = (train_data["train"].map(generate_and_tokenize_prompt))
-    print(train_data)
+    print("Training Data:", train_data)
     # print(train_data["text"])
     # print(train_data[0])
     # print("train_data[0]:", train_data[0])
     # print(tokenizer.batch_decode(train_data[0]['labels'], skip_special_tokens=True, clean_up_tokenization_spaces=True))
+    val_sample = 1812
+    # val_sample = 64
+    val_data["train"] = val_data["train"].shuffle(seed=seed).select(range(val_sample)) if val_sample > -1 else val_data["train"].shuffle(seed=seed)
+    val_data["train"] = val_data["train"].shuffle(seed=seed)
     val_data = (val_data["train"].map(generate_and_tokenize_prompt))
-    print(val_data)
+    print("Validation Data:", val_data)
     # print(val_data['text'][:16])
     
     # train_data = train_data.remove_columns(train_data["train"].column_names)
@@ -243,18 +247,16 @@ def train(
 
     def compute_metrics(eval_preds):
         gc.collect()
-        print("+"*100)
-        print("Inside compute_metrics")
-        logits, labels = eval_preds
-        print(f"len of logits: {logits.shape} --- {logits[0]}")
-        print(f"len of labels: {labels.shape} --- {labels[0]}")
-        # print(eval_preds[0], eval_preds[1], eval_preds[2])
         pre, labels = eval_preds
-        # print("Lengths:", len(labels), len(pre), len(pre[0]), len(pre[1]))
+        pred_labels = pre[0]
+        gold = pre[1]
+        print("_"*100)
+        print("pre:", gold, pred_labels)
         # print("Dimensions:", len(labels[0]))
         # print("labels:", labels)
         # print(pre[1], pre[0])
-        auc = roc_auc_score(pre[1], pre[0])
+        auc = roc_auc_score(gold, pred_labels)
+        print("AUC Score:", auc)
         return {'auc': auc}
     
     def cosine_similarity(tensor1, tensor2):
@@ -270,22 +272,23 @@ def train(
         Original Trainer may have a memory leak. 
         This is a workaround to avoid storing too many tensors that are not needed.
         """
-        print("^"*100)
-        print("Inside preprocess_logits_for_metrics")
-        print(f"len of logits: {logits.shape} --- {logits[0]}")
+        # print("^"*100)
+        # print("Inside preprocess_logits_for_metrics")
+        # print(f"len of logits: {logits.shape} --- {logits[0]}")
         # print(f"logits dimension: {len(logits[0])}")
-        print(f"len of labels: {labels.shape} --- {labels[0]}")
+        # print(f"len of labels: {labels.shape} --- {labels[0]}")
         # print(f"labels dimension: {len(labels[0])}")
-        gts = []
-        for label in labels.tolist():
-            temp = []
-            for num in label:
-                if num!=-100:
-                    temp.append(num)
-                else:
-                    temp.append(2)
-            gts.append(temp)
-        gts = torch.tensor(gts)
+        # gts = []
+        # for label in labels.tolist():
+        #     temp = []
+        #     for num in label:
+        #         if num!=-100:
+        #             temp.append(num)
+        #         else:
+        #             temp.append(2)
+        #     gts.append(temp)
+        # gts = torch.tensor(gts)
+        # gts = labels.copy()
         ### Uncomment from here
         mask_end_idx_list = []
         for label in labels.tolist():
@@ -294,39 +297,39 @@ def train(
             # print("mask_end_idx:", mask_end_idx)
             mask_end_idx_list.append(mask_end_idx)
             # print("After removing masks:", label[mask_end_idx+1:-1])
-        print("Mask ends:", len(mask_end_idx_list), mask_end_idx_list)
+        # print("Mask ends:", len(mask_end_idx_list), mask_end_idx_list)
         # print("labels:", labels)
         # print("GT:", tokenizer.batch_decode(labels, skip_special_tokens=False, clean_up_tokenization_spaces=True))
         # print("gts:", gts)
-        gts_text = tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True)
-        print("GT:", gts_text)
+        # gts_text = tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True)
+        # print("GT:", gts_text)
 
         # labels_index = torch.argwhere(torch.bitwise_or(labels == 8241, labels == 3782))
         # gold = torch.where(labels[labels_index[:, 0], labels_index[:, 1]] == 3782, 0, 1)
         # labels_index[: , 1] = labels_index[: , 1] - 1
 
         # logits = logits.softmax(dim=-1)
-        argmax_indices = torch.argmax(logits, dim=-1)
-        print("Predicted Indices:", argmax_indices.shape, argmax_indices)
+        # argmax_indices = torch.argmax(logits, dim=-1)
+        # print("Predicted Indices:", argmax_indices.shape, argmax_indices)
         
-        preds = []
-        k = 0
-        for predicted in argmax_indices.tolist():
-            temp = [2]*mask_end_idx_list[k]
-            temp.extend(predicted[mask_end_idx_list[k]:])
-            preds.append(temp)
-            k += 1
-        preds = torch.tensor(preds)
+        # preds = []
+        # k = 0
+        # for predicted in argmax_indices.tolist():
+        #     temp = [-100]*mask_end_idx_list[k]
+        #     temp.extend(predicted[mask_end_idx_list[k]:])
+        #     preds.append(temp)
+        #     k += 1
+        # preds = torch.tensor(preds)
 
-        print("-"*100)
-        preds_text = tokenizer.batch_decode(preds, skip_special_tokens=False, clean_up_tokenization_spaces=True)
-        print("Predicted:", preds_text)
+        # print("-"*100)
+        # preds_text = tokenizer.batch_decode(preds, skip_special_tokens=False, clean_up_tokenization_spaces=True)
+        # print("Predicted:", preds_text)
         
         # gts = gts.float()
         # preds = preds.float()
-        ### For similarity
-        sim_loss = cosine_similarity(gts.float(), preds.float())
-        print("sim_loss:", sim_loss)
+        # ### For similarity
+        # sim_loss = cosine_similarity(gts.float(), preds.float())
+        # print("sim_loss:", sim_loss)
 
         ### For BERTScore
         # scorer = BERTScorer(model_type = 'microsoft/deberta-large-mnli')
@@ -338,32 +341,36 @@ def train(
         # print("reconstruction_loss:", reconstruction_loss)
 
         ### For AUC
-        print(f"gts:\n{gts[0][-10:]}\n{gts[1][-10:]}")
-        # labels_index = torch.argwhere(torch.bitwise_or(gts == 8241, gts == 3782))
-        labels_index = torch.argwhere(torch.bitwise_or(gts == 3869, gts == 1939)) ### Yes - 3869, No - 1939
-        gold = torch.where(gts[labels_index[:, 0], labels_index[:, 1]] == 1939, 0, 1)
-        labels_index[: , 1] = labels_index[: , 1] - 1
-        print("labels_index:", labels_index)
-        print("Gold:", gold)
+        # print(f"gts:\n{gts[0][-10:]}\n{gts[1][-10:]}")
+        # labels_index = torch.argwhere(torch.bitwise_or(gts == 8241, gts == 3782)) --- From TALLRec
         
-        pred_labels = []
-        logits = logits.softmax(dim=-1)
-        print(f"len of logits: {logits.shape} --- {logits[0]}")
-        for l in labels_index:
-            yes_prob = logits[l[0]][-3][3869]
-            no_prob = logits[l[0]][-3][1939]
-            print("Probability of Yes", logits[l[0]][-3][3869])
-            print("Probability of No", logits[l[0]][-3][1939])
+        # labels_index = torch.argwhere(torch.bitwise_or(gts == 3869, gts == 1939)) ### Yes - 3869, No - 1939
+        # gold = torch.where(gts[labels_index[:, 0], labels_index[:, 1]] == 1939, 0, 1)
+
+        labels_index = torch.argwhere(torch.bitwise_or(labels == 3869, labels == 1939)) ### Yes - 3869, No - 1939
+        gold = torch.where(labels[labels_index[:, 0], labels_index[:, 1]] == 1939, 0, 1)
+        labels_index[: , 1] = labels_index[: , 1] - 1
+        # print("labels_index:", labels_index)
+        # print("Gold:", gold)
+        
+        # pred_labels = []
+        # logits = logits.softmax(dim=-1)
+        # print(f"len of logits: {logits.shape} --- {logits[0]}")
+        # for l in labels_index:
+        #     yes_prob = logits[l[0]][-3][3869]
+        #     no_prob = logits[l[0]][-3][1939]
+        #     print("Probability of Yes", logits[l[0]][-3][3869])
+        #     print("Probability of No", logits[l[0]][-3][1939])
             # if yes_prob > no_prob:
 
-        # logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3782, 8241]], dim = -1)
-        # # print(logits)
+        logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3869, 1939]], dim = -1)
+        # print(logits, logits[:,0])
         # # print(logits[:, 1][2::3], gold[2::3])
         # print("Formatted logits: ", logits[:,1][2::3].shape, logits[:,1][2::3])
         # print("Formatted labels: ", gold[2::3].shape, gold[2::3])
         
         # return logits[:, 1][2::3], gold[2::3]
-        return logits, labels ### Comment this
+        return logits[:,0], gold ### Comment this
 
     os.environ["WANDB_DISABLED"] = "true"
     
@@ -427,138 +434,9 @@ def train(
     response_template = "[/INST]"
     collator = DataCollatorForCompletionOnlyLM(response_template, instruction_template, tokenizer=tokenizer, mlm=False)
 
-    print("Using custom TrainerForReconstructionLoss...")
-    # class ReconstructionLoss(torch.nn.Module):
-    #     def __init__(self, tensor1, tensor2):
-    #         super().__init__()
-    #         self.tensor1 = tensor1
-    #         self.tensor2 = tensor2
-    #         reconstruction_losses = []
-    #         for i in range(len(self.tensor1)):
-    #             similarity = F.cosine_similarity(self.tensor1[i].unsqueeze(0), self.tensor2[i].unsqueeze(0), dim=1)
-    #             reconstruction_losses.append(1- similarity.item())
-    #         print("Reconstruction Losses:", reconstruction_losses)
-    #         return np.average(reconstruction_losses)
-        
-    #     def forward(self):
-    #         reconstruction_losses = []
-    #         for i in range(len(self.tensor1)):
-    #             similarity = F.cosine_similarity(self.tensor1[i].unsqueeze(0), self.tensor2[i].unsqueeze(0), dim=1)
-    #             reconstruction_losses.append(1- similarity.item())
-    #         print("Reconstruction Losses:", reconstruction_losses)
-    #         return np.average(reconstruction_losses)
-
-    def get_reconstruction_loss(tensor1, tensor2):
-        reconstruction_losses = []
-        for i in range(len(tensor1)):
-            similarity = F.cosine_similarity(tensor1[i].unsqueeze(0), tensor2[i].unsqueeze(0), dim=1)
-            reconstruction_losses.append(1 - similarity.item())
-        print("Reconstruction Losses:", reconstruction_losses)
-        reconstruction_losses = torch.tensor(reconstruction_losses, requires_grad = True)
-        return reconstruction_losses.mean()
-        
-    class TrainerForReconstructionLoss(SFTTrainer):
-        """
-        Custom Trainer which inherits the SFTTrainer which has already inherited the Trainer class
-
-        This overrides the compute_loss function to calculate the reconstruction loss function instead of the Cross Entropy loss
-
-        ToDo - 
-        1. Write code to get the reconstruction loss
-        2. Find the direction of optimzation of objective function
-        3. Modify the code as in the original code for faster training    
-        """
-        def compute_loss(self, model, inputs, return_outputs=False):
-            print("*"*100)
-            print("Inside custom compute_loss...")
-            # print("model:", model)
-            input_texts = tokenizer.batch_decode(inputs.input_ids, skip_special_tokens=False, clean_up_tokenization_spaces=True)
-            print("input_texts:",input_texts)
-
-            if self.label_smoother is not None and "labels" in inputs:
-                labels = inputs.pop("labels")
-            else:
-                labels = None
-            print("labels:", labels)
-            print("inputs:", inputs.input_ids.shape, inputs)
-
-            gts = []
-            for label in inputs.labels.tolist():
-                temp = []
-                for num in label:
-                    if num!=-100:
-                        temp.append(num)
-                    else:
-                        temp.append(2)
-                gts.append(temp)
-            gts = torch.tensor(gts)
-            gts_text = tokenizer.batch_decode(gts, skip_special_tokens=False, clean_up_tokenization_spaces=True)
-            print("="*100)
-            print("gts_text:",gts_text)
-            
-            mask_end_idx_list = []
-            for label in inputs.labels.tolist():
-                # print("label:", len(label), label)
-                mask_end_idx = rindex(label[:-1], -100)
-                # print("mask_end_idx:", mask_end_idx)
-                mask_end_idx_list.append(mask_end_idx)
-                # print("After removing masks:", label[mask_end_idx+1:-1])
-            print("Mask ends:", len(mask_end_idx_list), mask_end_idx_list)
-
-            outputs = model(**inputs)
-            logits = outputs.logits
-            logits = logits.softmax(dim=-1)
-            argmax_indices = torch.argmax(logits, dim=-1)
-            print("Predicted Indices:", argmax_indices.shape, argmax_indices)
-
-            preds = []
-            k = 0
-            for predicted in argmax_indices.tolist():
-                temp = [2]*mask_end_idx_list[k]
-                temp.extend(predicted[mask_end_idx_list[k]:])
-                preds.append(temp)
-                k += 1
-            preds = torch.tensor(preds)
-
-            print("-"*100)
-            preds_text = tokenizer.batch_decode(preds, skip_special_tokens=False, clean_up_tokenization_spaces=True)
-            print("Predicted Texts:", preds_text)
-
-            ### For Reconstruction Loss
-            loss_device = outputs['loss'].device
-            print("loss device:", loss_device)
-            reconstruction_loss = get_reconstruction_loss(gts.float(), preds.float()).to(loss_device)
-            print("reconstruction_loss:", reconstruction_loss)
-
-            if self.args.past_index >= 0:
-                self._past = outputs[self.args.past_index]
-
-            if labels is not None:
-                unwrapped_model = self.accelerator.unwrap_model(model)
-                if super()._is_peft_model(unwrapped_model):
-                    model_name = unwrapped_model.base_model.model._get_name()
-                else:
-                    model_name = unwrapped_model._get_name()
-                if model_name in super().MODEL_FOR_CAUSAL_LM_MAPPING_NAMES.values():
-                    loss = self.label_smoother(outputs, labels, shift_labels=True)
-                else:
-                    loss = self.label_smoother(outputs, labels)
-            else:
-                if isinstance(outputs, dict) and "loss" not in outputs:
-                    raise ValueError(
-                        "The model did not return a loss from the inputs, only the following keys: "
-                        f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
-                    )
-
-            print("return_outputs:", return_outputs)
-            print("loss:", outputs['loss'])
-            outputs['loss'] = reconstruction_loss
-            # print("outputs:", outputs)
-            return (reconstruction_loss, outputs) if return_outputs else reconstruction_loss
-    
+    print("Using custom TrainerForReconstructionLoss...")    
     # print("Using SFTTrainer...")
-    # trainer = SFTTrainer(
-    trainer = TrainerForReconstructionLoss(
+    trainer = SFTTrainer(
         model,
         train_dataset=train_data,
         eval_dataset=val_data,
@@ -585,7 +463,7 @@ def train(
             report_to=None,
             # report_to="wandb" if use_wandb else None,
             # run_name=wandb_run_name if use_wandb else None,
-            eval_accumulation_steps=2,
+            # eval_accumulation_steps=2, ### If this is not set then the entire output from preprocess_logits_for_metrics goes to cpu at last which might lead to CUDA memory issue if logits are not preprocessed
         ),
         # data_collator=transformers.DataCollatorForSeq2Seq(
         #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
@@ -593,7 +471,7 @@ def train(
         # data_collator=transformers.DataCollatorForLanguageModeling(
         #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", mlm=False,
         # ),
-        max_seq_length = 2048,
+        max_seq_length = 2100,
         # formatting_func = formatting_prompts_func,
         dataset_text_field="text",
         data_collator = collator,
