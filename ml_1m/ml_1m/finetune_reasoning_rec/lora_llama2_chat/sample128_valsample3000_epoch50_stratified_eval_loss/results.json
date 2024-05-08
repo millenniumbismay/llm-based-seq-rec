@@ -1,0 +1,14 @@
+{
+    "movie": {
+        "movie": {
+            "sample128_valsample3000_epoch50_stratified_eval_loss": {
+                "42": {
+                    "128_stratified": {
+                        "auc": 0.6356420515119209,
+                        "bertscore": 0.7068233623902003
+                    }
+                }
+            }
+        }
+    }
+}

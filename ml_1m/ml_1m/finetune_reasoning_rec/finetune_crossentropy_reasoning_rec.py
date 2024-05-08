@@ -7,7 +7,7 @@ import numpy as np
 import fire
 import torch
 import transformers
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import torch.nn.functional as F
 from transformers import EarlyStoppingCallback
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
@@ -17,11 +17,11 @@ Unused imports:
 import torch.nn as nn
 import bitsandbytes as bnb
 """
-from peft import (  # noqa: E402
+from peft import (
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
-    prepare_model_for_int8_training,
+    prepare_model_for_int8_training, ### Only avaialable in peft==0.7.0
     set_peft_model_state_dict,
 )
 from transformers import LlamaForCausalLM, LlamaTokenizer  # noqa: F402
@@ -38,14 +38,15 @@ def train(
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie/train.json",
     val_data_path: str = "./final_data/movie/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample_16_test",
-    sample: int = 64,
-    seed: int = 0,
+    output_dir: str = "./lora_llama2_chat/sample128_valsample3000_epoch50_stratified_eval_loss",
+    sample: int = 256,
+    val_sample: int = 3000,
+    seed: int = 42,
     # training hyperparams
     batch_size: int = 8,
-    micro_batch_size: int = 4,
-    num_epochs: int = 2,
-    learning_rate: float = 1e-4,
+    micro_batch_size: int = 2,
+    num_epochs: int = 50,
+    learning_rate: float = 3e-4,
     cutoff_len: int = 2100,
     # lora hyperparams
     lora_r: int = 8,
@@ -54,6 +55,7 @@ def train(
     lora_target_modules: List[str] = [
         "q_proj",
         "v_proj",
+        # "k_proj"
     ],
     # llm hyperparams
     train_on_inputs: bool = True,  # if False, masks out inputs in loss
@@ -72,6 +74,7 @@ def train(
         f"train_data_path: {train_data_path}\n"
         f"val_data_path: {val_data_path}\n"
         f"sample: {sample}\n"
+        f"val_sample: {val_sample}\n"
         f"seed: {seed}\n"
         f"output_dir: {output_dir}\n"
         f"batch_size: {batch_size}\n"
@@ -96,6 +99,12 @@ def train(
     ), "Please specify a --base_model, e.g. --base_model='decapoda-research/llama-7b-hf'"
     gradient_accumulation_steps = batch_size // micro_batch_size
     # print(f"gradient_accumulation_steps: {gradient_accumulation_steps}")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created {output_dir}...")
+    else:
+        print(f"{output_dir} already exists...")
 
     device_map = 'auto'
     max_memory_mapping = {0: "23GiB", 1: "23GiB"}
@@ -217,17 +226,46 @@ def train(
             print(f"Checkpoint {checkpoint_name} not found")
 
     model.print_trainable_parameters()  # Be more transparent about the % of trainable params.
+    
+    def stratified_sampling(data, sample, seed = 42):
+        print("Inside Stratified Sampling helper...")
+        # print(data[0])
+        data = data.shuffle(seed = seed)
+        # print('-'*100)
+        # print(f"After suffling: {data[0]}")
+        stratified_data = []
+        k = 0
+        yes_cnt = 0
+        no_cnt = 0
+        while yes_cnt < sample//2 or no_cnt < sample//2 and k < data.num_rows:
+            # print(k)
+            target =  data[k]['output'].split(' ')[-1]
+            # print(f"Target: {target}")
+            if target == 'Yes':
+                if yes_cnt < sample//2:
+                    stratified_data.append(data[k])
+                    yes_cnt += 1
+            elif target == 'No':
+                if no_cnt < sample//2:
+                    stratified_data.append(data[k])
+                    no_cnt += 1
+            k += 1
+        print(f"Final yes_cnt: {yes_cnt} no_cnt: {no_cnt}")
+        return Dataset.from_list(stratified_data)
+    
+    print(train_data)
+    train_data["train"] = stratified_sampling(data = train_data["train"], sample = sample, seed = seed)
     # print(train_data)
-    train_data["train"] = train_data["train"].shuffle(seed=seed).select(range(sample)) if sample > -1 else train_data["train"].shuffle(seed=seed)
-    train_data["train"] = train_data["train"].shuffle(seed=seed)
+
+    # train_data["train"] = train_data["train"].shuffle(seed=seed).select(range(sample)) if sample > -1 else train_data["train"].shuffle(seed=seed)
+    # train_data["train"] = train_data["train"].shuffle(seed=seed)
     train_data = (train_data["train"].map(generate_and_tokenize_prompt))
     print("Training Data:", train_data)
     # print(train_data["text"])
     # print(train_data[0])
     # print("train_data[0]:", train_data[0])
     # print(tokenizer.batch_decode(train_data[0]['labels'], skip_special_tokens=True, clean_up_tokenization_spaces=True))
-    val_sample = 1812
-    # val_sample = 64
+
     val_data["train"] = val_data["train"].shuffle(seed=seed).select(range(val_sample)) if val_sample > -1 else val_data["train"].shuffle(seed=seed)
     val_data["train"] = val_data["train"].shuffle(seed=seed)
     val_data = (val_data["train"].map(generate_and_tokenize_prompt))
@@ -250,8 +288,8 @@ def train(
         pre, labels = eval_preds
         pred_labels = pre[0]
         gold = pre[1]
-        print("_"*100)
-        print("pre:", gold, pred_labels)
+        # print("_"*100)
+        # print("pre:", gold, pred_labels)
         # print("Dimensions:", len(labels[0]))
         # print("labels:", labels)
         # print(pre[1], pre[0])
@@ -266,6 +304,14 @@ def train(
             cosine_similarities.append(similarity.item())
         print("Cosine Similarities:", cosine_similarities)
         return np.average(cosine_similarities)
+    
+    # def get_reconstruction_loss(tensor1, tensor2):
+    #     cosine_similarities = []
+    #     for i in range(len(tensor1)):
+    #         similarity = F.cosine_similarity(tensor1[i].unsqueeze(0), tensor2[i].unsqueeze(0), dim=1)
+    #         cosine_similarities.append(similarity.item())
+    #     print("Cosine Similarities:", cosine_similarities)
+    #     return np.average(cosine_similarities)
 
     def preprocess_logits_for_metrics(logits, labels):
         """
@@ -290,12 +336,12 @@ def train(
         # gts = torch.tensor(gts)
         # gts = labels.copy()
         ### Uncomment from here
-        mask_end_idx_list = []
-        for label in labels.tolist():
-            # print("label:", len(label), label)
-            mask_end_idx = rindex(label[:-1], -100)
-            # print("mask_end_idx:", mask_end_idx)
-            mask_end_idx_list.append(mask_end_idx)
+        # mask_end_idx_list = []
+        # for label in labels.tolist():
+        #     # print("label:", len(label), label)
+        #     mask_end_idx = rindex(label[:-1], -100)
+        #     # print("mask_end_idx:", mask_end_idx)
+        #     mask_end_idx_list.append(mask_end_idx)
             # print("After removing masks:", label[mask_end_idx+1:-1])
         # print("Mask ends:", len(mask_end_idx_list), mask_end_idx_list)
         # print("labels:", labels)
@@ -342,6 +388,7 @@ def train(
 
         ### For AUC
         # print(f"gts:\n{gts[0][-10:]}\n{gts[1][-10:]}")
+        # print(f"labels:\n{labels[0][-10:]}\n{labels[1][-10:]}")
         # labels_index = torch.argwhere(torch.bitwise_or(gts == 8241, gts == 3782)) --- From TALLRec
         
         # labels_index = torch.argwhere(torch.bitwise_or(gts == 3869, gts == 1939)) ### Yes - 3869, No - 1939
@@ -363,22 +410,26 @@ def train(
         #     print("Probability of No", logits[l[0]][-3][1939])
             # if yes_prob > no_prob:
 
+        # logits = torch.softmax(logits[labels_index[:, 0], -2][:, [3869, 1939]], dim = -1)
+        # print(f"Last logits: {logits}")
+
         logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3869, 1939]], dim = -1)
-        # print(logits, logits[:,0])
+        # print("logits at labels_index", logits, logits[:,0])
         # # print(logits[:, 1][2::3], gold[2::3])
         # print("Formatted logits: ", logits[:,1][2::3].shape, logits[:,1][2::3])
         # print("Formatted labels: ", gold[2::3].shape, gold[2::3])
         
         # return logits[:, 1][2::3], gold[2::3]
         return logits[:,0], gold ### Comment this
+        # return logits, gold
 
     os.environ["WANDB_DISABLED"] = "true"
     
     if sample > -1:
         if sample <= 128 :
-            eval_step = 4
+            eval_step = 100
         else:
-            eval_step = sample / 128 * 2
+            eval_step = sample / 128 * 8
     # print("sample: ", sample)
     
     # print("Using Trainer...")
@@ -434,8 +485,8 @@ def train(
     response_template = "[/INST]"
     collator = DataCollatorForCompletionOnlyLM(response_template, instruction_template, tokenizer=tokenizer, mlm=False)
 
-    print("Using custom TrainerForReconstructionLoss...")    
-    # print("Using SFTTrainer...")
+    # print("Using custom TrainerForReconstructionLoss...")    
+    print("Using SFTTrainer...")
     trainer = SFTTrainer(
         model,
         train_dataset=train_data,
@@ -444,7 +495,7 @@ def train(
             per_device_train_batch_size=micro_batch_size,
             per_device_eval_batch_size=micro_batch_size,
             gradient_accumulation_steps=gradient_accumulation_steps,
-            warmup_steps=20,
+            warmup_steps=100,
             num_train_epochs=num_epochs,
             learning_rate=learning_rate,
             fp16=True,
@@ -457,13 +508,15 @@ def train(
             output_dir=output_dir,
             save_total_limit=1,
             load_best_model_at_end=True,
-            metric_for_best_model="eval_auc",
+            # metric_for_best_model="eval_auc",
+            metric_for_best_model="eval_loss",
+            greater_is_better = False,
             ddp_find_unused_parameters=False if ddp else None,
             group_by_length=group_by_length,
             report_to=None,
             # report_to="wandb" if use_wandb else None,
             # run_name=wandb_run_name if use_wandb else None,
-            # eval_accumulation_steps=2, ### If this is not set then the entire output from preprocess_logits_for_metrics goes to cpu at last which might lead to CUDA memory issue if logits are not preprocessed
+            # eval_accumulation_steps=20, ### If this is not set then the entire output from preprocess_logits_for_metrics goes to cpu at last which might lead to CUDA memory issue if logits are not preprocessed
         ),
         # data_collator=transformers.DataCollatorForSeq2Seq(
         #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
@@ -504,7 +557,7 @@ def train(
 
 
 def generate_prompt(data_point):
-    return f"""[INST]{data_point["instruction"]}{data_point["input"]}[/INST]{data_point["output"]}"""
+    return f"""[INST]{data_point["instruction"]}{data_point["input"]} [/INST]{data_point["output"]}"""
 
 
 if __name__ == "__main__":
