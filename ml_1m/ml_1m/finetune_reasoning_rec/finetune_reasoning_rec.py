@@ -7,7 +7,7 @@ import numpy as np
 import fire
 import torch
 import transformers
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import torch.nn.functional as F
 from transformers import EarlyStoppingCallback
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
@@ -37,16 +37,17 @@ def train(
     # model/data params
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie/train.json",
-    val_data_path: str = "./final_data/movie_wo_profile/valid.json",
+    val_data_path: str = "./final_data/movie/valid.json",
     output_dir: str = "./lora_llama2_chat/sample_8_test",
-    sample: int = 16,
-    seed: int = 0,
+    sample: int = 8,
+    val_sample: int = 8,
+    seed: int = 42,
     # training hyperparams
     batch_size: int = 4,
     micro_batch_size: int = 2,
     num_epochs: int = 2,
-    learning_rate: float = 1e-4,
-    cutoff_len: int = 2048,
+    learning_rate: float = 3e-4,
+    cutoff_len: int = 2100,
     # lora hyperparams
     lora_r: int = 8,
     lora_alpha: int = 16,
@@ -96,6 +97,12 @@ def train(
     ), "Please specify a --base_model, e.g. --base_model='decapoda-research/llama-7b-hf'"
     gradient_accumulation_steps = batch_size // micro_batch_size
     # print(f"gradient_accumulation_steps: {gradient_accumulation_steps}")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created {output_dir}...")
+    else:
+        print(f"{output_dir} already exists...")
 
     device_map = 'auto'
     max_memory_mapping = {0: "23GiB", 1: "23GiB"}
@@ -218,16 +225,46 @@ def train(
 
     model.print_trainable_parameters()  # Be more transparent about the % of trainable params.
     # print(train_data)
-    train_data["train"] = train_data["train"].shuffle(seed=seed).select(range(sample)) if sample > -1 else train_data["train"].shuffle(seed=seed)
-    train_data["train"] = train_data["train"].shuffle(seed=seed)
+
+    def stratified_sampling(data, sample, seed = 42):
+        print("Inside Stratified Sampling helper...")
+        # print(data[0])
+        data = data.shuffle(seed = seed)
+        # print('-'*100)
+        # print(f"After suffling: {data[0]}")
+        stratified_data = []
+        k = 0
+        yes_cnt = 0
+        no_cnt = 0
+        while yes_cnt < sample//2 or no_cnt < sample//2 and k < data.num_rows:
+            # print(k)
+            target =  data[k]['output'].split(' ')[-1]
+            # print(f"Target: {target}")
+            if target == 'Yes':
+                if yes_cnt < sample//2:
+                    stratified_data.append(data[k])
+                    yes_cnt += 1
+            elif target == 'No':
+                if no_cnt < sample//2:
+                    stratified_data.append(data[k])
+                    no_cnt += 1
+            k += 1
+        print(f"Final yes_cnt: {yes_cnt} no_cnt: {no_cnt}")
+        return Dataset.from_list(stratified_data)
+    
+
+    train_data["train"] = stratified_sampling(data = train_data["train"], sample = sample, seed = seed)
     train_data = (train_data["train"].map(generate_and_tokenize_prompt))
-    print(train_data)
+    print("Training Data:", train_data)
     # print(train_data["text"])
     # print(train_data[0])
     # print("train_data[0]:", train_data[0])
     # print(tokenizer.batch_decode(train_data[0]['labels'], skip_special_tokens=True, clean_up_tokenization_spaces=True))
+    
+    val_data["train"] = val_data["train"].shuffle(seed=seed).select(range(val_sample)) if val_sample > -1 else val_data["train"].shuffle(seed=seed)
+    val_data["train"] = val_data["train"].shuffle(seed=seed)
     val_data = (val_data["train"].map(generate_and_tokenize_prompt))
-    print(val_data)
+    print("Validation Data:", val_data)
     # print(val_data['text'][:16])
     
     # train_data = train_data.remove_columns(train_data["train"].column_names)
