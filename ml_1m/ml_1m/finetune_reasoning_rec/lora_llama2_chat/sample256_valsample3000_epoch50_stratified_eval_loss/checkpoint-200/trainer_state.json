@@ -1,0 +1,90 @@
+{
+  "best_metric": 0.6303831934928894,
+  "best_model_checkpoint": "./lora_llama2_chat/sample256_valsample3000_epoch50_stratified_eval_loss/checkpoint-200",
+  "epoch": 6.25,
+  "eval_steps": 200,
+  "global_step": 200,
+  "is_hyper_param_search": false,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 0.62,
+      "learning_rate": 5.9999999999999995e-05,
+      "loss": 0.873,
+      "step": 20
+    },
+    {
+      "epoch": 1.25,
+      "learning_rate": 0.00011999999999999999,
+      "loss": 0.6652,
+      "step": 40
+    },
+    {
+      "epoch": 1.88,
+      "learning_rate": 0.00017999999999999998,
+      "loss": 0.5333,
+      "step": 60
+    },
+    {
+      "epoch": 2.5,
+      "learning_rate": 0.00023999999999999998,
+      "loss": 0.4787,
+      "step": 80
+    },
+    {
+      "epoch": 3.12,
+      "learning_rate": 0.0003,
+      "loss": 0.438,
+      "step": 100
+    },
+    {
+      "epoch": 3.75,
+      "learning_rate": 0.000296,
+      "loss": 0.3847,
+      "step": 120
+    },
+    {
+      "epoch": 4.38,
+      "learning_rate": 0.000292,
+      "loss": 0.3462,
+      "step": 140
+    },
+    {
+      "epoch": 5.0,
+      "learning_rate": 0.00028799999999999995,
+      "loss": 0.3148,
+      "step": 160
+    },
+    {
+      "epoch": 5.62,
+      "learning_rate": 0.00028399999999999996,
+      "loss": 0.2324,
+      "step": 180
+    },
+    {
+      "epoch": 6.25,
+      "learning_rate": 0.00028,
+      "loss": 0.2135,
+      "step": 200
+    },
+    {
+      "epoch": 6.25,
+      "eval_auc": 0.9999780885310989,
+      "eval_loss": 0.6303831934928894,
+      "eval_runtime": 2024.9633,
+      "eval_samples_per_second": 1.482,
+      "eval_steps_per_second": 0.741,
+      "step": 200
+    }
+  ],
+  "logging_steps": 20,
+  "max_steps": 1600,
+  "num_input_tokens_seen": 0,
+  "num_train_epochs": 50,
+  "save_steps": 200,
+  "total_flos": 1.332886044672e+17,
+  "train_batch_size": 2,
+  "trial_name": null,
+  "trial_params": null
+}

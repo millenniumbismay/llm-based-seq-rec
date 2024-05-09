@@ -38,7 +38,7 @@ def train(
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie/train.json",
     val_data_path: str = "./final_data/movie/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample128_valsample3000_epoch50_stratified_eval_loss",
+    output_dir: str = "./lora_llama2_chat/sample256_valsample3000_epoch50_stratified_eval_loss",
     sample: int = 256,
     val_sample: int = 3000,
     seed: int = 42,
@@ -429,7 +429,7 @@ def train(
         if sample <= 128 :
             eval_step = 100
         else:
-            eval_step = sample / 128 * 8
+            eval_step = sample / 128 * 100
     # print("sample: ", sample)
     
     # print("Using Trainer...")

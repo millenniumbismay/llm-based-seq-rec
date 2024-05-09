@@ -314,10 +314,6 @@ def train(
         return np.average(cosine_similarities)
 
     def compute_metrics(logits, labels):
-        """
-        Original Trainer may have a memory leak. 
-        This is a workaround to avoid storing too many tensors that are not needed.
-        """
         # print("^"*100)
         # print("Inside preprocess_logits_for_metrics")
         # print(f"len of logits: {logits.shape} --- {logits[0]}")
