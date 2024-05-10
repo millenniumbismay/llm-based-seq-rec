@@ -38,19 +38,19 @@ def train(
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie/train.json",
     val_data_path: str = "./final_data/movie/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample256_valsample3000_epoch50_stratified_eval_loss",
+    output_dir: str = "./lora_llama2_chat/sample256_valsample3000_r16_epoch50_stratified_eval_loss",
     sample: int = 256,
     val_sample: int = 3000,
     seed: int = 42,
     # training hyperparams
     batch_size: int = 8,
-    micro_batch_size: int = 2,
+    micro_batch_size: int = 4,
     num_epochs: int = 50,
     learning_rate: float = 3e-4,
     cutoff_len: int = 2100,
     # lora hyperparams
-    lora_r: int = 8,
-    lora_alpha: int = 16,
+    lora_r: int = 16,
+    lora_alpha: int = 32,
     lora_dropout: float = 0.05,
     lora_target_modules: List[str] = [
         "q_proj",
@@ -425,11 +425,12 @@ def train(
 
     os.environ["WANDB_DISABLED"] = "true"
     
-    if sample > -1:
-        if sample <= 128 :
-            eval_step = 100
-        else:
-            eval_step = sample / 128 * 100
+    # if sample > -1:
+    #     if sample <= 128 :
+    #         eval_step = 25
+    #     else:
+    #         eval_step = sample / 128 * 16
+    eval_step = sample//batch_size
     # print("sample: ", sample)
     
     # print("Using Trainer...")
@@ -495,11 +496,11 @@ def train(
             per_device_train_batch_size=micro_batch_size,
             per_device_eval_batch_size=micro_batch_size,
             gradient_accumulation_steps=gradient_accumulation_steps,
-            warmup_steps=100,
+            warmup_steps=10,
             num_train_epochs=num_epochs,
             learning_rate=learning_rate,
             fp16=True,
-            logging_steps=20,
+            logging_steps=10,
             optim="adamw_torch",
             evaluation_strategy="steps",
             save_strategy="steps",

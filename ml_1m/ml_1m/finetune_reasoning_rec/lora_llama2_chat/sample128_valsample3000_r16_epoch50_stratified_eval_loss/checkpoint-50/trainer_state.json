@@ -1,0 +1,51 @@
+{
+  "best_metric": 0.49325138330459595,
+  "best_model_checkpoint": "./lora_llama2_chat/sample128_valsample3000_r16_epoch50_stratified_eval_loss/checkpoint-50",
+  "epoch": 3.125,
+  "eval_steps": 25,
+  "global_step": 50,
+  "is_hyper_param_search": false,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 1.25,
+      "learning_rate": 0.0003,
+      "loss": 0.7552,
+      "step": 20
+    },
+    {
+      "epoch": 1.56,
+      "eval_auc": 0.9999947412474637,
+      "eval_loss": 0.5371713638305664,
+      "eval_runtime": 2021.3672,
+      "eval_samples_per_second": 1.484,
+      "eval_steps_per_second": 0.371,
+      "step": 25
+    },
+    {
+      "epoch": 2.5,
+      "learning_rate": 0.0002923076923076923,
+      "loss": 0.4882,
+      "step": 40
+    },
+    {
+      "epoch": 3.12,
+      "eval_auc": 0.9999999999999999,
+      "eval_loss": 0.49325138330459595,
+      "eval_runtime": 2021.6896,
+      "eval_samples_per_second": 1.484,
+      "eval_steps_per_second": 0.371,
+      "step": 50
+    }
+  ],
+  "logging_steps": 20,
+  "max_steps": 800,
+  "num_input_tokens_seen": 0,
+  "num_train_epochs": 50,
+  "save_steps": 25,
+  "total_flos": 3.334329040896e+16,
+  "train_batch_size": 4,
+  "trial_name": null,
+  "trial_params": null
+}
