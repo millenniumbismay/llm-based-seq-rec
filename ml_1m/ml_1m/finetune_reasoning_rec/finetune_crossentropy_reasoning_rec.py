@@ -38,19 +38,19 @@ def train(
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie/train.json",
     val_data_path: str = "./final_data/movie/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample256_valsample3000_r16_epoch50_stratified_eval_loss",
-    sample: int = 256,
+    output_dir: str = "./lora_llama2_chat/sample128_valsample3000_lr3e-5",
+    sample: int = 128,
     val_sample: int = 3000,
     seed: int = 42,
     # training hyperparams
     batch_size: int = 8,
     micro_batch_size: int = 4,
     num_epochs: int = 50,
-    learning_rate: float = 3e-4,
+    learning_rate: float = 3e-5,
     cutoff_len: int = 2100,
     # lora hyperparams
-    lora_r: int = 16,
-    lora_alpha: int = 32,
+    lora_r: int = 8,
+    lora_alpha: int = 16,
     lora_dropout: float = 0.05,
     lora_target_modules: List[str] = [
         "q_proj",
@@ -237,6 +237,26 @@ def train(
         k = 0
         yes_cnt = 0
         no_cnt = 0
+        if sample == 4096:
+            ### a special case
+            while no_cnt < sample//2 and k < data.num_rows:
+                target =  data[k]['output'].split(' ')[-1]
+                if target == "No":
+                    stratified_data.append(data[k])
+                    no_cnt += 1
+                k += 1
+            k = 0
+            while yes_cnt + no_cnt < sample and k < data.num_rows:
+                target =  data[k]['output'].split(' ')[-1]
+                if target == "Yes":
+                    stratified_data.append(data[k])
+                    yes_cnt += 1
+                k += 1
+            print(f"Final yes_cnt: {yes_cnt} no_cnt: {no_cnt}")
+            return Dataset.from_list(stratified_data)
+            
+
+            return Dataset.from_list(stratified_data)
         while yes_cnt < sample//2 or no_cnt < sample//2 and k < data.num_rows:
             # print(k)
             target =  data[k]['output'].split(' ')[-1]
@@ -250,6 +270,7 @@ def train(
                     stratified_data.append(data[k])
                     no_cnt += 1
             k += 1
+
         print(f"Final yes_cnt: {yes_cnt} no_cnt: {no_cnt}")
         return Dataset.from_list(stratified_data)
     
@@ -258,7 +279,7 @@ def train(
     # print(train_data)
 
     # train_data["train"] = train_data["train"].shuffle(seed=seed).select(range(sample)) if sample > -1 else train_data["train"].shuffle(seed=seed)
-    # train_data["train"] = train_data["train"].shuffle(seed=seed)
+    train_data["train"] = train_data["train"].shuffle(seed=seed)
     train_data = (train_data["train"].map(generate_and_tokenize_prompt))
     print("Training Data:", train_data)
     # print(train_data["text"])
@@ -431,7 +452,7 @@ def train(
     #     else:
     #         eval_step = sample / 128 * 16
     eval_step = sample//batch_size
-    # print("sample: ", sample)
+    print("eval_step: ", eval_step)
     
     # print("Using Trainer...")
     # trainer = transformers.Trainer(
@@ -496,7 +517,7 @@ def train(
             per_device_train_batch_size=micro_batch_size,
             per_device_eval_batch_size=micro_batch_size,
             gradient_accumulation_steps=gradient_accumulation_steps,
-            warmup_steps=10,
+            warmup_steps=sample//(batch_size*2),
             num_train_epochs=num_epochs,
             learning_rate=learning_rate,
             fp16=True,
@@ -510,6 +531,7 @@ def train(
             save_total_limit=1,
             load_best_model_at_end=True,
             # metric_for_best_model="eval_auc",
+            # greater_is_better = True,
             metric_for_best_model="eval_loss",
             greater_is_better = False,
             ddp_find_unused_parameters=False if ddp else None,

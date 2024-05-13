@@ -39,7 +39,7 @@ import gc
 def main(
     load_8bit: bool = True,
     base_model: str = "meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora_llama2_chat/sample128_valsample3000_r16_epoch50_stratified_eval_loss",
+    lora_weights: str = "./lora_llama2_chat/sample128_valsample3000_lr3e-5_eval_loss",
     # lora_weights: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss",
     test_data_path: str = "./final_data/movie/test.json",
     # result_json_data: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss/results.json",
@@ -62,7 +62,7 @@ def main(
     
     # temp_list = model_type.split('_')
     seed = 42
-    sample = '128_stratified'
+    sample = '128'
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -215,13 +215,14 @@ def main(
         # print(f"Output: {output}")
         
         generated_s = s[:, max_length:]
-        labels_index = torch.argwhere(torch.bitwise_or(generated_s== 3869, generated_s== 1939))
+        # labels_index = torch.argwhere(torch.bitwise_or(generated_s== 3869, generated_s== 1939))
         # labels_index[: , 1] = labels_index[: , 1] - 1
         # print(f"labels_index: {labels_index}")
 
         ## Check if we are missing any label
         scores = generation_output.scores
         logits = []
+        logits_binary = []
         # print(f"Checking if we are missing any label")
         k = 0
         for _s in generated_s:
@@ -234,6 +235,11 @@ def main(
                 # print(f"Score for Yes (3869): {score[k][3869], softmax_scores[0]}")
                 # print(f"Score for No (1939): {score[k][1939], softmax_scores[1]}")
                 logits.append(softmax_scores[0].item())
+                if softmax_scores[0] > softmax_scores[1]:
+                    logits_binary.append(1)
+                else:
+                    logits_binary.append(0)
+                
             else:
                 score = scores[_s_label_index[0]].softmax(dim = -1)
                 # print(f"score: {score.shape}\n {score}")
@@ -242,6 +248,10 @@ def main(
                 # print("Score for No (1939)", score[k][1939], softmax_scores[1])
                 # logits.append(softmax_scores[0].item())
                 logits.append(softmax_scores[0].item())
+                if softmax_scores[0] > softmax_scores[1]:
+                    logits_binary.append(1)
+                else:
+                    logits_binary.append(0)
 
             k += 1
         # print(f"logits: {logits}")
@@ -265,13 +275,14 @@ def main(
         # print(output, logits.tolist())
         # print("output:", output)
         # return 0
-        return output, logits
+        return output, logits, logits_binary
         
     # testing code for readme
     logit_list = []
     gold_list= []
     outputs = []
     logits = []
+    logits_binary = []
     from tqdm import tqdm
     gold = []
     pred = []
@@ -305,13 +316,15 @@ def main(
             instructions, inputs, gold, gold_label = batch
             # print(f"gold_label: {gold_label}")
             # print(f"gold: {gold}")
-            output, logit = evaluate(instructions, inputs)
+            output, logit, logit_binary = evaluate(instructions, inputs)
             outputs = outputs + output
             logits = logits + logit
+            logits_binary = logits_binary + logit_binary
 
         for i, test in tqdm(enumerate(test_data)):
             test_data[i]['generated_output'] = outputs[i]
             test_data[i]['logits'] = logits[i]
+            test_data[i]['logits_binary'] = logits_binary[i]
         
         with open(test_output_json_data, 'w+') as f:
             json.dump(test_data, f, indent=4)
@@ -330,6 +343,7 @@ def main(
         return np.average(test_bertscore['f1'])
 
     data[train_sce][test_sce][model_name][seed][sample]['auc'] = roc_auc_score(gold_labels, logits)
+    data[train_sce][test_sce][model_name][seed][sample]['auc_binary'] = roc_auc_score(gold_labels, logits_binary)
     data[train_sce][test_sce][model_name][seed][sample]['bertscore'] = get_bertscore(outputs, golds)
 
     print(data)
