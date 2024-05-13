@@ -38,8 +38,8 @@ def train(
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie/train.json",
     val_data_path: str = "./final_data/movie/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample128_valsample3000_lr3e-5",
-    sample: int = 128,
+    output_dir: str = "./lora_llama2_chat/sample64_valsample3000_lr3e-5_val_loss",
+    sample: int = 64,
     val_sample: int = 3000,
     seed: int = 42,
     # training hyperparams
