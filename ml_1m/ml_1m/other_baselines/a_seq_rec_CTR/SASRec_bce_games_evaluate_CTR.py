@@ -66,7 +66,7 @@ def parse_args():
                         help='evaluate every eval_num epoch' )
     parser.add_argument("--seed", type=int, default=42,
                         help="the random seed")
-    parser.add_argument("--randon_sample_num", type=int, default=64,
+    parser.add_argument("--randon_sample_num", type=int, default=6040,
                         help="the random seed")
     parser.add_argument("--result_json_path", type=str, default="./result_temp/temp.json")
     return parser.parse_args()
@@ -294,6 +294,7 @@ class RecDataset_seq_CTR(Dataset):
 
 def main(result_folder, topk=[1,3,5,10,20]):
     if args.model=='SASRec':
+        # model = SASRec(args.hidden_factor,item_num, seq_size, args.dropout_rate, device)
         model = SASRec_with_label_CTR(args.hidden_factor,item_num, seq_size, args.dropout_rate, device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-8, weight_decay=args.l2_decay)
     bce_loss = nn.BCEWithLogitsLoss()
@@ -309,7 +310,7 @@ def main(result_folder, topk=[1,3,5,10,20]):
 
     train_dataset = RecDataset_seq_CTR(train_data, max_len)
     print(f"Train dataset length: {len(train_dataset)}")
-    train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=1)
 
 
     total_step=0
@@ -396,7 +397,8 @@ if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
     setup_seed(args.seed)
 
-    data_directory = './data_for_CTR/' + args.data
+    data_directory = './final_data/' + args.data
+    print(f"data_directory: {data_directory}")
 
     if args.data == "book":
         max_len = 10
@@ -405,7 +407,7 @@ if __name__ == '__main__':
     elif args.data == "movie":
         max_len = 20
         seq_size = max_len  # the length of history to define the seq
-        item_num = 3706  # total number of items
+        item_num = 4000  # total number of items
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
