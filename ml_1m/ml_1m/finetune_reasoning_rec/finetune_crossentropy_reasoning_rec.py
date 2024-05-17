@@ -36,16 +36,16 @@ import gc
 def train(
     # model/data params
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
-    train_data_path: str = "./final_data/movie/train.json",
-    val_data_path: str = "./final_data/movie/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample64_valsample3000_lr3e-5_val_loss",
-    sample: int = 64,
-    val_sample: int = 3000,
+    train_data_path: str = "./final_data/movie_new/train.json",
+    val_data_path: str = "./final_data/movie_new/valid.json",
+    output_dir: str = "./lora_llama2_chat/sample256_valsample1500_lr3e-5_predfirst_valauc",
+    sample: int = 256,
+    val_sample: int = 1500,
     seed: int = 42,
     # training hyperparams
     batch_size: int = 8,
     micro_batch_size: int = 4,
-    num_epochs: int = 50,
+    num_epochs: int = 100,
     learning_rate: float = 3e-5,
     cutoff_len: int = 2100,
     # lora hyperparams
@@ -237,17 +237,17 @@ def train(
         k = 0
         yes_cnt = 0
         no_cnt = 0
-        if sample == 4096:
+        if sample == 3000:
             ### a special case
             while no_cnt < sample//2 and k < data.num_rows:
-                target =  data[k]['output'].split(' ')[-1]
+                target =  data[k]['output'].split(' ')[1]
                 if target == "No":
                     stratified_data.append(data[k])
                     no_cnt += 1
                 k += 1
             k = 0
             while yes_cnt + no_cnt < sample and k < data.num_rows:
-                target =  data[k]['output'].split(' ')[-1]
+                target =  data[k]['output'].split(' ')[1]
                 if target == "Yes":
                     stratified_data.append(data[k])
                     yes_cnt += 1
@@ -259,7 +259,7 @@ def train(
             return Dataset.from_list(stratified_data)
         while yes_cnt < sample//2 or no_cnt < sample//2 and k < data.num_rows:
             # print(k)
-            target =  data[k]['output'].split(' ')[-1]
+            target =  data[k]['output'].split(' ')[1]
             # print(f"Target: {target}")
             if target == 'Yes':
                 if yes_cnt < sample//2:
@@ -287,7 +287,9 @@ def train(
     # print("train_data[0]:", train_data[0])
     # print(tokenizer.batch_decode(train_data[0]['labels'], skip_special_tokens=True, clean_up_tokenization_spaces=True))
 
-    val_data["train"] = val_data["train"].shuffle(seed=seed).select(range(val_sample)) if val_sample > -1 else val_data["train"].shuffle(seed=seed)
+    print(f"Validation Data: {val_data}")
+    val_data["train"] = stratified_sampling(data = val_data["train"], sample = val_sample, seed = seed)
+    # val_data["train"] = val_data["train"].shuffle(seed=seed).select(range(val_sample)) if val_sample > -1 else val_data["train"].shuffle(seed=seed)
     val_data["train"] = val_data["train"].shuffle(seed=seed)
     val_data = (val_data["train"].map(generate_and_tokenize_prompt))
     print("Validation Data:", val_data)
@@ -314,8 +316,9 @@ def train(
         # print("Dimensions:", len(labels[0]))
         # print("labels:", labels)
         # print(pre[1], pre[0])
+        # print(f"gold: {set(gold)}")
         auc = roc_auc_score(gold, pred_labels)
-        print("AUC Score:", auc)
+        print("\nAUC Score:", auc)
         return {'auc': auc}
     
     def cosine_similarity(tensor1, tensor2):
@@ -444,6 +447,7 @@ def train(
         return logits[:,0], gold ### Comment this
         # return logits, gold
 
+
     os.environ["WANDB_DISABLED"] = "true"
     
     # if sample > -1:
@@ -530,10 +534,10 @@ def train(
             output_dir=output_dir,
             save_total_limit=1,
             load_best_model_at_end=True,
-            # metric_for_best_model="eval_auc",
-            # greater_is_better = True,
-            metric_for_best_model="eval_loss",
-            greater_is_better = False,
+            metric_for_best_model="eval_auc",
+            greater_is_better = True,
+            # metric_for_best_model="eval_loss",
+            # greater_is_better = False,
             ddp_find_unused_parameters=False if ddp else None,
             group_by_length=group_by_length,
             report_to=None,
@@ -554,7 +558,7 @@ def train(
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
         peft_config=config,
-        callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]
+        callbacks = [EarlyStoppingCallback(early_stopping_patience=5)]
     )
     model.config.use_cache = False
 
