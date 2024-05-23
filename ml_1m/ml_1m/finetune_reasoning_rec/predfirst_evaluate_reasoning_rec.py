@@ -39,7 +39,7 @@ import gc
 def main(
     load_8bit: bool = True,
     base_model: str = "meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora_llama2_chat/sample128_valsample1500_lr3e-5_predfirst_valauc",
+    lora_weights: str = "./lora_llama2_chat/sample256_valsample1500_lr4e-5_predfirst_valauc",
     # lora_weights: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss",
     test_data_path: str = "./final_data/movie_new/test.json",
     # result_json_data: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss/results.json",
@@ -60,9 +60,8 @@ def main(
     train_sce = 'movie'
     test_sce = 'movie'
     
-    # temp_list = model_type.split('_')
     seed = 42
-    sample = '128'
+    sample = '256'
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')

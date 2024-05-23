@@ -38,7 +38,7 @@ def train(
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
     train_data_path: str = "./final_data/movie_new/train.json",
     val_data_path: str = "./final_data/movie_new/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample256_valsample1500_lr3e-5_predfirst_valauc",
+    output_dir: str = "./lora_llama2_chat/sample256_valsample1500_lr4e-5_predfirst_valauc",
     sample: int = 256,
     val_sample: int = 1500,
     seed: int = 42,
@@ -46,7 +46,7 @@ def train(
     batch_size: int = 8,
     micro_batch_size: int = 4,
     num_epochs: int = 100,
-    learning_rate: float = 3e-5,
+    learning_rate: float = 4e-5,
     cutoff_len: int = 2100,
     # lora hyperparams
     lora_r: int = 8,
@@ -455,7 +455,7 @@ def train(
     #         eval_step = 25
     #     else:
     #         eval_step = sample / 128 * 16
-    eval_step = sample//batch_size
+    eval_step = (sample//batch_size)
     print("eval_step: ", eval_step)
     
     # print("Using Trainer...")
