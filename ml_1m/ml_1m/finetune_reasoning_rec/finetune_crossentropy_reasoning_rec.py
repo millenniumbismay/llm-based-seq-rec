@@ -36,15 +36,15 @@ import gc
 def train(
     # model/data params
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
-    train_data_path: str = "./final_data/movie_new/train.json",
-    val_data_path: str = "./final_data/movie_new/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample64_valsample1500_lr4e-5_predfirst_valauc",
-    sample: int = 64,
+    train_data_path: str = "./final_data/movie_wo_profile/train.json",
+    val_data_path: str = "./final_data/movie_wo_profile/valid.json",
+    output_dir: str = "./lora_llama2_chat/sample256_valsample1500_lr4e-5_wo_profile_valauc",
+    sample: int = 256,
     val_sample: int = 1500,
     seed: int = 42,
     # training hyperparams
-    batch_size: int = 8,
-    micro_batch_size: int = 4,
+    batch_size: int = 6,
+    micro_batch_size: int = 3,
     num_epochs: int = 100,
     learning_rate: float = 4e-5,
     cutoff_len: int = 2100,
@@ -107,7 +107,7 @@ def train(
         print(f"{output_dir} already exists...")
 
     device_map = 'auto'
-    max_memory_mapping = {0: "23GiB", 1: "23GiB"}
+    max_memory_mapping = {0: "23GiB", 1: "10GiB", 2: "16GiB"}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1
     print("ddp:", ddp)
