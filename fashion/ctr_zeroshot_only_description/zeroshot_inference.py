@@ -67,7 +67,7 @@ def getZeroshotInference(model, content):
     
     outputs = model.generate(**model_inputs,
                              pad_token_id = tokenizer.eos_token_id,
-                             max_new_tokens=300,
+                             max_new_tokens=32,
                              do_sample = True,
                              temperature=0.01,
                              top_p=0.9
@@ -84,7 +84,7 @@ with open(zeroshot_prompt_path, 'r') as f:
     zeroshot_prompts = json.load(f)
 print(len(zeroshot_prompts))
 
-inference_path = "zeroshot_inference_valid.json"
+inference_path = "zeroshot_only_description_inference_valid.json"
 if os.path.isfile(inference_path):
     print("Loading zeroshot_inference_dict...")
     with open(inference_path, 'r') as f:
