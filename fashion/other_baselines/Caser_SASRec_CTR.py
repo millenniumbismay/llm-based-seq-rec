@@ -26,8 +26,8 @@ def parse_args():
 
     parser.add_argument('--epoch', type=int, default=100,
                         help='Number of max epochs.')
-    parser.add_argument('--data', nargs='?', default='movie',
-                        help='book, movie')
+    parser.add_argument('--data', nargs='?', default='fashion',
+                        help='book, movie, fashion')
     # parser.add_argument('--pretrain', type=int, default=1,
     #                     help='flag for pretrain. 1: initialize from pretrain; 0: randomly initialize; -1: save the model to pretrain file')
     parser.add_argument('--batch_size', type=int, default=1024,
@@ -54,7 +54,7 @@ def parse_args():
                         help='dro alpha.')
     parser.add_argument('--beta', type=float, default=1.0,
                         help='for robust radius')
-    parser.add_argument("--model", type=str, default="SASRec",
+    parser.add_argument("--model", type=str, default="Caser",
                         help='the model name, GRU, Caser, SASRec')
     parser.add_argument('--dropout_rate', type=float, default=0.1,
                         help='dropout ')
@@ -66,7 +66,7 @@ def parse_args():
                         help='evaluate every eval_num epoch' )
     parser.add_argument("--seed", type=int, default=42,
                         help="the random seed")
-    parser.add_argument("--randon_sample_num", type=int, default=6040,
+    parser.add_argument("--randon_sample_num", type=int, default=256,
                         help="the random seed")
     parser.add_argument("--result_json_path", type=str, default="./result_temp/temp.json")
     return parser.parse_args()
@@ -188,7 +188,7 @@ class Caser_with_label_CTR(nn.Module):
 
     def forward(self, states, state_rate, len_states):
         input_emb = self.item_embeddings(states)
-        state_rate_reshape = state_rate.view(-1,20,1)
+        state_rate_reshape = state_rate.view(-1,4,1)
         input_emb = torch.cat((input_emb, state_rate_reshape), dim=2)
         # input_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
         mask = self.get_mask(len_states, states.shape[1])
@@ -263,6 +263,7 @@ class Caser_with_label_CTR(nn.Module):
 
 class SASRec_with_label_CTR(nn.Module):
     def __init__(self, hidden_size, item_num, state_size, dropout, device, num_heads=1):
+        # print(hidden_size, item_num, state_size, dropout, device)
         super(SASRec_with_label_CTR, self).__init__()
         self.state_size = state_size
         self.hidden_size = hidden_size
@@ -300,7 +301,8 @@ class SASRec_with_label_CTR(nn.Module):
     def forward(self, states, state_rate, len_states):
         # inputs_emb = self.item_embeddings(states) * self.item_embeddings.embedding_dim ** 0.5
         inputs_emb = self.item_embeddings(states)
-        state_rate_reshape = state_rate.view(-1,20,1)
+        state_rate_reshape = state_rate.view(-1,4,1)
+        # print(len(inputs_emb), state_rate_reshape)
         inputs_emb = torch.cat((inputs_emb, state_rate_reshape), dim=2)
         inputs_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
         seq = self.emb_dropout(inputs_emb)
@@ -318,7 +320,7 @@ class SASRec_with_label_CTR(nn.Module):
     def forward_eval(self, states, state_rate, len_states):
         # inputs_emb = self.item_embeddings(states) * self.item_embeddings.embedding_dim ** 0.5
         inputs_emb = self.item_embeddings(states)
-        state_rate_reshape = state_rate.view(-1,20,1)
+        state_rate_reshape = state_rate.view(-1,4,1)
         inputs_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
         seq = self.emb_dropout(inputs_emb)
         mask = self.get_mask(len_states, states.shape[1])
@@ -357,6 +359,7 @@ def evaluate(model, test_data, device):
 
             model_output = model.forward(seq, history_rating, len_seq)
             target = target.view((-1, 1))
+            # print(model_output.shape, target.shape)
             scores = (nn.Sigmoid()(torch.gather(model_output, 1, target))).view(-1).cpu()
             labels = target_rating.cpu()
             if j == 0:
@@ -530,6 +533,10 @@ if __name__ == '__main__':
         max_len = 20
         seq_size = max_len  # the length of history to define the seq
         item_num = 4000  # total number of items
+    elif args.data == "fashion":
+        max_len = 4
+        seq_size = max_len
+        item_num = 7000
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
