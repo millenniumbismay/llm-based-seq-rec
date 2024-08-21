@@ -26,9 +26,10 @@ except:  # noqa: E722
 
 def main(
     load_8bit: bool = True,
-    base_model: str = "meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora-llama2-chat",
-    test_data_path: str = "./data/movie/test.json",
+    base_model: str = "baffo32/decapoda-research-llama-7B-hf",##"meta-llama/Llama-2-7b-chat-hf",
+    lora_weights: str = "./lora_llama2_chat/sample_256",
+    # lora_weights: str = "/home/grads/m/mbismay/llm-based-seq-rec/ml_1m/ml_1m/tallrec_baseline/lora-llama7b/sample_128",
+    test_data_path: str = "./data/test.json",
     result_json_data: str = "llama2_chat_temp.json",
     batch_size: int = 32,
     share_gradio: bool = False,
@@ -41,12 +42,12 @@ def main(
     model_name = '_'.join(model_type.split('_')[:2])
     print(f"model_type: {model_type} model_name: {model_name}")
 
-    train_sce = 'movie'
-    test_sce = 'movie'
+    train_sce = 'fashion'
+    test_sce = 'fashion'
     
     # temp_list = model_type.split('_')
     seed = 0
-    sample = 64
+    sample = 256
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -78,7 +79,7 @@ def main(
             base_model,
             load_in_8bit=load_8bit,
             torch_dtype=torch.float16,
-            device_map="auto",
+            device_map='auto',
             max_memory = max_memory_mapping,
             token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
         )
@@ -189,14 +190,15 @@ def main(
                 yield list[batch_size * i: batch_size * (i + 1)]
         for i, batch in tqdm(enumerate(zip(batch(instructions), batch(inputs)))):
             instructions, inputs = batch
+            # print(inputs)
             output, logit = evaluate(instructions, inputs)
             outputs = outputs + output
             logits = logits + logit
         for i, test in tqdm(enumerate(test_data)):
             test_data[i]['predict'] = outputs[i]
             test_data[i]['logits'] = logits[i]
-            print(f"{outputs[i]} --- {outputs[i][0]} --- {logits[i][0]}")
-            print("--------")
+            # print(f"{outputs[i]} --- {outputs[i][0]} --- {logits[i][0]}")
+            # print("--------")
             pred.append(logits[i][0])
 
     from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, precision_score, recall_score

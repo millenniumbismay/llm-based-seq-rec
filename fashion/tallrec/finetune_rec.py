@@ -26,16 +26,16 @@ from sklearn.metrics import roc_auc_score
 
 def train(
     # model/data params
-    base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
-    train_data_path: str = "./data/movie/train.json",
-    val_data_path: str = "./data/movie/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample_8_test",
-    sample: int = 32,
+    base_model: str = "baffo32/decapoda-research-llama-7B-hf",  # the only required argument
+    train_data_path: str = "./data/train.json",
+    val_data_path: str = "./data/valid.json",
+    output_dir: str = "./lora_llama2_chat/sample_256",
+    sample: int = 256,
     seed: int = 0,
     # training hyperparams
-    batch_size: int = 128,
-    micro_batch_size: int = 32,
-    num_epochs: int = 5,
+    batch_size: int = 16,
+    micro_batch_size: int = 2,
+    num_epochs: int = 100,
     learning_rate: float = 1e-4,
     cutoff_len: int = 512,
     # lora hyperparams
@@ -89,7 +89,7 @@ def train(
     # print(f"gradient_accumulation_steps: {gradient_accumulation_steps}")
 
     device_map = 'auto'
-    max_memory_mapping = {0: "23GiB", 1: "23GiB"}
+    max_memory_mapping = {0: "24GiB", 1: "24GiB"}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1
     if ddp:
@@ -150,7 +150,7 @@ def train(
     def generate_and_tokenize_prompt(data_point):
         full_prompt = generate_prompt(data_point)
         tokenized_full_prompt = tokenize(full_prompt)
-        print("TRAIN ON  INPUTS FLAG:", train_on_inputs)
+        # print("TRAIN ON  INPUTS FLAG:", train_on_inputs)
         if not train_on_inputs:
             user_prompt = generate_prompt({**data_point, "output": ""})
             tokenized_user_prompt = tokenize(user_prompt, add_eos_token=False)
@@ -235,9 +235,9 @@ def train(
         Original Trainer may have a memory leak. 
         This is a workaround to avoid storing too many tensors that are not needed.
         """
-        print(f"len of logits: {logits.shape}")
+        # print(f"len of logits: {logits.shape}")
         # print(f"logits dimension: {len(logits[0])}")
-        print(f"len of labels: {labels.shape} --- labels: {labels}")
+        # print(f"len of labels: {labels.shape} --- labels: {labels}")
         # print(f"labels dimension: {len(labels[0])}")
 
         labels_index = torch.argwhere(torch.bitwise_or(labels == 8241, labels == 3782))
@@ -245,7 +245,7 @@ def train(
         labels_index[: , 1] = labels_index[: , 1] - 1
         logits = logits.softmax(dim=-1)
         argmax_indices = torch.argmax(logits, dim=-1)
-        print("Predicted Indices:", argmax_indices)
+        # print("Predicted Indices:", argmax_indices)
         logits = torch.softmax(logits[labels_index[:, 0], labels_index[:, 1]][:,[3782, 8241]], dim = -1)
         # print(logits)
         # print(logits[:, 1][2::3], gold[2::3])
@@ -255,9 +255,9 @@ def train(
     
     if sample > -1:
         if sample <= 128 :
-            eval_step = 4
+            eval_step = 50
         else:
-            eval_step = sample / 128 * 2
+            eval_step = sample / 128 * 50
     # print("sample: ", sample)
     
     trainer = transformers.Trainer(
@@ -271,7 +271,7 @@ def train(
             num_train_epochs=num_epochs,
             learning_rate=learning_rate,
             fp16=True,
-            logging_steps=20,
+            logging_steps=40,
             optim="adamw_torch",
             evaluation_strategy="steps",
             save_strategy="steps",
@@ -293,7 +293,7 @@ def train(
         ),
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-        callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]
+        callbacks = [EarlyStoppingCallback(early_stopping_patience=10)]
     )
     model.config.use_cache = False
 

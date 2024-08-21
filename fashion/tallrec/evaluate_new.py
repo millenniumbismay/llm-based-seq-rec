@@ -27,9 +27,10 @@ except:  # noqa: E722
 
 def main(
     load_8bit: bool = False,
-    base_model: str = "meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora-llama2-chat",
-    test_data_path: str = "./data/movie/test.json",
+    base_model: str = "baffo32/decapoda-research-llama-7B-hf",
+    lora_weights: str = "./lora_llama2_chat/sample_256",
+    # lora_weights: str = "/home/grads/m/mbismay/llm-based-seq-rec/ml_1m/ml_1m/tallrec_baseline/lora-llama7b/sample_128",
+    test_data_path: str = "./data/test.json",
     result_json_data: str = "llama2_chat_temp_new.json",
     batch_size: int = 32,
     share_gradio: bool = False,
@@ -42,12 +43,12 @@ def main(
     model_name = '_'.join(model_type.split('_')[:2])
     print(f"model_type: {model_type} model_name: {model_name}")
 
-    train_sce = 'movie'
-    test_sce = 'movie'
+    train_sce = 'fashion'
+    test_sce = 'fashion'
     
     # temp_list = model_type.split('_')
-    seed = 0
-    sample = 64
+    seed = 42
+    sample = 256
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -71,7 +72,7 @@ def main(
     tokenizer = LlamaTokenizer.from_pretrained(base_model,
                                                token = os.environ.get("HUGGINGFACE_ACCESS_TOKEN"),
                                             )
-    max_memory_mapping = {0: "24GiB", 1:"24GiB"}
+    max_memory_mapping = {0: "24GiB", 1: "24GiB"}
     print("Loading Model...")
     if device == "cuda":
         model = LlamaForCausalLM.from_pretrained(
@@ -208,8 +209,8 @@ def main(
         for i, test in tqdm(enumerate(test_data)):
             test_data[i]['predict'] = outputs[i]
             test_data[i]['logits'] = logits[i]
-            print(f"{outputs[i]} --- {outputs[i][0]} --- {logits[i][0]}")
-            print("--------")
+            # print(f"{outputs[i]} --- {outputs[i][0]} --- {logits[i][0]}")
+            # print("--------")
             res, cntY, cntN, cntInvalid, invalid_res = evalHelper(outputs[i], cntY, cntN, cntInvalid, invalid_res)
             pred.append(res)
 
