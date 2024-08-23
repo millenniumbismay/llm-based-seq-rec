@@ -26,8 +26,8 @@ except:  # noqa: E722
 
 def main(
     load_8bit: bool = True,
-    base_model: str = "meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora-llama2-chat",
+    base_model: str = "baffo32/decapoda-research-llama-7B-hf",##"meta-llama/Llama-2-7b-chat-hf",
+    lora_weights: str = "./lora-llama7b/sample_64",
     test_data_path: str = "./data/movie/test.json",
     result_json_data: str = "llama2_chat_temp.json",
     batch_size: int = 32,

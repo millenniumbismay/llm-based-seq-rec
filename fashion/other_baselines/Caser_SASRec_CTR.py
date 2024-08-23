@@ -536,7 +536,7 @@ if __name__ == '__main__':
     elif args.data == "fashion":
         max_len = 4
         seq_size = max_len
-        item_num = 7000
+        item_num = 6089
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
