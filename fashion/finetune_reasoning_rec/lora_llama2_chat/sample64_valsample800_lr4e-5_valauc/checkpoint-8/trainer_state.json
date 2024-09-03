@@ -1,0 +1,30 @@
+{
+  "best_metric": 0.6460630806113276,
+  "best_model_checkpoint": "./lora_llama2_chat/sample64_valsample800_lr4e-5_valauc/checkpoint-8",
+  "epoch": 1.0,
+  "eval_steps": 8,
+  "global_step": 8,
+  "is_hyper_param_search": false,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 1.0,
+      "eval_auc": 0.6460630806113276,
+      "eval_loss": 1.0638558864593506,
+      "eval_runtime": 535.4194,
+      "eval_samples_per_second": 1.494,
+      "eval_steps_per_second": 0.374,
+      "step": 8
+    }
+  ],
+  "logging_steps": 10,
+  "max_steps": 800,
+  "num_input_tokens_seen": 0,
+  "num_train_epochs": 100,
+  "save_steps": 8,
+  "total_flos": 5331544178688000.0,
+  "train_batch_size": 4,
+  "trial_name": null,
+  "trial_params": null
+}

@@ -39,7 +39,7 @@ import gc
 def main(
     load_8bit: bool = True,
     base_model: str = "meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora_llama2_chat/sample256_valsample1500_lr4e-5_wo_profile_valauc",
+    lora_weights: str = "./lora_llama2_chat/sample64_valsample1500_lr4e-5_wo_profile_valauc",
     # lora_weights: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss",
     test_data_path: str = "./final_data/movie_wo_profile/test.json",
     # result_json_data: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss/results.json",
@@ -61,7 +61,7 @@ def main(
     test_sce = 'movie'
     
     seed = 42
-    sample = '256'
+    sample = '64'
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -92,7 +92,7 @@ def main(
                                             )
     tokenizer.add_special_tokens({"pad_token":tokenizer.eos_token})
 
-    max_memory_mapping = {0: "23GiB", 1:"12GiB", 2: "16GiB"}
+    max_memory_mapping = {0: "23GiB", 1:"23GiB", 'cpu': "10GiB"}
     print("Loading Model...")
     if device == "cuda":
         model = LlamaForCausalLM.from_pretrained(

@@ -1,0 +1,45 @@
+{
+  "best_metric": 0.6749026071321547,
+  "best_model_checkpoint": "./lora_llama2_chat/sample64_valsample800_lr4e-5_valauc/checkpoint-16",
+  "epoch": 2.0,
+  "eval_steps": 8,
+  "global_step": 16,
+  "is_hyper_param_search": false,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 1.0,
+      "eval_auc": 0.6624138447707522,
+      "eval_loss": 1.0518476963043213,
+      "eval_runtime": 535.6537,
+      "eval_samples_per_second": 1.494,
+      "eval_steps_per_second": 0.373,
+      "step": 8
+    },
+    {
+      "epoch": 1.25,
+      "learning_rate": 3.969849246231156e-05,
+      "loss": 1.1377,
+      "step": 10
+    },
+    {
+      "epoch": 2.0,
+      "eval_auc": 0.6749026071321547,
+      "eval_loss": 0.9650271534919739,
+      "eval_runtime": 535.918,
+      "eval_samples_per_second": 1.493,
+      "eval_steps_per_second": 0.373,
+      "step": 16
+    }
+  ],
+  "logging_steps": 10,
+  "max_steps": 800,
+  "num_input_tokens_seen": 0,
+  "num_train_epochs": 100,
+  "save_steps": 8,
+  "total_flos": 1.0663088357376e+16,
+  "train_batch_size": 4,
+  "trial_name": null,
+  "trial_params": null
+}

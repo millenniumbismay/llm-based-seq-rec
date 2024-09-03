@@ -1,0 +1,14 @@
+{
+    "movie": {
+        "movie": {
+            "sample128_valsample1500_lr4e-5_wo_profile_valauc": {
+                "42": {
+                    "128": {
+                        "auc": 0.6208855459057072,
+                        "bertscore": 0.6984515391588211
+                    }
+                }
+            }
+        }
+    }
+}

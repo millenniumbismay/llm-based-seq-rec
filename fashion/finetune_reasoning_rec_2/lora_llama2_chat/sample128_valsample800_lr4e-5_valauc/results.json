@@ -1,0 +1,14 @@
+{
+    "fashion": {
+        "fashion": {
+            "sample128_valsample800_lr4e-5_valauc": {
+                "42": {
+                    "128": {
+                        "auc": 0.7176306620209061,
+                        "bertscore": 0.6830602971091867
+                    }
+                }
+            }
+        }
+    }
+}

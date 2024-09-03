@@ -115,25 +115,28 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
     cnt += 1
     # if cnt <= 6032:
     #     continue
+    if user in reasoning_train_dict:
+        continue
     batch_prompts.append(content[0])
     batch_users.append(user)
 
     if cnt%batch_size == 0:
         print('_'*100)
         print("Batch Number:", cnt//batch_size)
+        print(f"Batch Users - {batch_users}")
         # print("Batch prompts: ",len(batch_prompts), batch_prompts)
         # print('-'*100)
         batch_responses = getZeroshotInference(model, batch_prompts)
         # print("Batch Responses: ",len(batch_responses), batch_responses)
 
         for i in range(len(batch_users)):
-            reasoning_train_dict[batch_users[i]] = batch_responses[i] + prompt_dataset[batch_users[i]][1]
+            reasoning_train_dict[batch_users[i]] = prompt_dataset[batch_users[i]][1] + batch_responses[i]
         # print("reasoning_train_dict:", len(reasoning_train_dict), reasoning_train_dict)
         batch_prompts = []
         batch_users = []
         print("Time taken for batch:", time.time() - batch_start)
         batch_start = time.time()
-    if cnt%(batch_size*5)== 0:
+    if cnt%(batch_size*2)== 0:
         print(f"Saving at {cnt}...")
         f2 = open(target_path,"wb")
         pickle.dump(reasoning_train_dict,f2)

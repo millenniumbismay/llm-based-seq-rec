@@ -39,9 +39,9 @@ import gc
 def main(
     load_8bit: bool = True,
     base_model: str = "meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora_llama2_chat/sample256_valsample1500_lr4e-5_wo_profile_valauc",
+    lora_weights: str = "./lora_llama2_chat/sample256_valsample800_lr1e-4_valauc",
     # lora_weights: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss",
-    test_data_path: str = "./final_data/movie_wo_profile/test.json",
+    test_data_path: str = "./final_data/fashion/test.json",
     # result_json_data: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss/results.json",
     # batch_size: int = 32,
     # share_gradio: bool = False,
@@ -57,8 +57,8 @@ def main(
     model_name = lora_weights.split('/')[-1]
     print(f"model_type: {model_type} model_name: {model_name}")
 
-    train_sce = 'movie'
-    test_sce = 'movie'
+    train_sce = 'fashion'
+    test_sce = 'fashion'
     
     seed = 42
     sample = '256'
@@ -92,7 +92,7 @@ def main(
                                             )
     tokenizer.add_special_tokens({"pad_token":tokenizer.eos_token})
 
-    max_memory_mapping = {0: "23GiB", 1:"12GiB", 2: "16GiB"}
+    max_memory_mapping = {0: "23GiB", 1:"23GiB", 'cpu': "10GiB"}
     print("Loading Model...")
     if device == "cuda":
         model = LlamaForCausalLM.from_pretrained(
@@ -281,7 +281,7 @@ def main(
     from tqdm import tqdm
     gold = []
     pred = []
-    test_sample = 1500
+    test_sample = 800
     
     with open(test_data_path, 'r') as f:
         test_data = json.load(f)
