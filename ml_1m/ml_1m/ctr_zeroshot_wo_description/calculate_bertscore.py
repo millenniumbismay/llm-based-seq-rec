@@ -15,17 +15,17 @@ def get_bertscore(predictions, references):
                             model_type = "microsoft/deberta-xlarge-mnli")
         return np.average(test_bertscore['f1'])
 
-ground_truth_file = '../finetune_reasoning_rec/final_data/movie/test.json'
+ground_truth_file = '../finetune_reasoning_rec/final_data/movie_wo_profile/test.json'
 with open(ground_truth_file, 'rb') as f:
     gts = json.load(f)
 # print(len(gts), gts[0]['output'])
 all_gts = list(gt['output'] for gt in gts)
 print(len(all_gts))
 
-pred_file = 'ctr_test_inference_mixtral.pkl'
+pred_file = 'zeroshot_inference_test.json'
 
 with open(pred_file, 'rb') as f:
-    predictions = pickle.load(f)
+    predictions = json.load(f)
 # print(len(predictions), predictions[1])
 all_preds = list(predictions.values())
 print(len(all_preds))
