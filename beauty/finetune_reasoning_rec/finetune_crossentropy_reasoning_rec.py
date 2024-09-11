@@ -36,18 +36,18 @@ import gc
 def train(
     # model/data params
     base_model: str = "meta-llama/Llama-2-7b-chat-hf", #"baffo32/decapoda-research-llama-7B-hf",  # the only required argument
-    train_data_path: str = "./final_data/fashion/train.json",
-    val_data_path: str = "./final_data/fashion/valid.json",
-    output_dir: str = "./lora_llama2_chat/sample256_valsample800_lr1e-4_valauc",
+    train_data_path: str = "./final_data/beauty/train.json",
+    val_data_path: str = "./final_data/beauty/valid.json",
+    output_dir: str = "./lora_llama2_chat/test_1",
     sample: int = 256,
-    val_sample: int = 800,
+    val_sample: int = 600,
     seed: int = 42,
     # training hyperparams
-    batch_size: int = 8,
-    micro_batch_size: int = 4,
+    batch_size: int = 6,
+    micro_batch_size: int = 3,
     num_epochs: int = 100,
-    learning_rate: float = 1e-4,
-    cutoff_len: int = 2100,
+    learning_rate: float = 4e-5,
+    cutoff_len: int = 2048,
     # lora hyperparams
     lora_r: int = 8,
     lora_alpha: int = 16,
@@ -237,40 +237,33 @@ def train(
         k = 0
         yes_cnt = 0
         no_cnt = 0
-        if sample == 800:
+        if sample >= 100:
             ### a special case
             while no_cnt < sample//2 and k < data.num_rows:
-                # print('-'*20)
-                # print(k, data[k]['output'])
                 target =  data[k]['output'].split(' ')[1]
-                # print(target.strip().lower())
-                if "no" in target.strip().lower():
+                if target == "No":
                     stratified_data.append(data[k])
                     no_cnt += 1
                 k += 1
             k = 0
             while yes_cnt + no_cnt < sample and k < data.num_rows:
-                # print('-'*20)
-                # print(k, data[k]['output'])
                 target =  data[k]['output'].split(' ')[1]
-                # print(target.strip().lower())
-                if "yes" in target.strip().lower():
+                if target == "Yes":
                     stratified_data.append(data[k])
                     yes_cnt += 1
                 k += 1
             print(f"Final yes_cnt: {yes_cnt} no_cnt: {no_cnt}")
             return Dataset.from_list(stratified_data)
             
-        while (yes_cnt < sample//2 or no_cnt < sample//2) and k < data.num_rows:
+        while yes_cnt < sample//2 or no_cnt < sample//2 and k < data.num_rows:
             # print(k)
-            # print(k,data[k]['output'], data[k]['output'].split(' ')[1])
             target =  data[k]['output'].split(' ')[1]
             # print(f"Target: {target}")
-            if 'yes' in target.strip().lower():
+            if target == 'Yes':
                 if yes_cnt < sample//2:
                     stratified_data.append(data[k])
                     yes_cnt += 1
-            elif 'no' in target.strip().lower():
+            elif target == 'No':
                 if no_cnt < sample//2:
                     stratified_data.append(data[k])
                     no_cnt += 1
@@ -556,14 +549,14 @@ def train(
         # data_collator=transformers.DataCollatorForLanguageModeling(
         #     tokenizer, pad_to_multiple_of=8, return_tensors="pt", mlm=False,
         # ),
-        max_seq_length = 2100,
+        max_seq_length = cutoff_len,
         # formatting_func = formatting_prompts_func,
         dataset_text_field="text",
         data_collator = collator,
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
         peft_config=config,
-        callbacks = [EarlyStoppingCallback(early_stopping_patience=10)]
+        callbacks = [EarlyStoppingCallback(early_stopping_patience=6)]
     )
     model.config.use_cache = False
 

@@ -28,7 +28,7 @@ except:  # noqa: E722
 def main(
     load_8bit: bool = False,
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",
-    lora_weights: str = "./lora_llama2_chat/sample_256",
+    lora_weights: str = "./lora_llama2_chat/sample_128",
     # lora_weights: str = "/home/grads/m/mbismay/llm-based-seq-rec/ml_1m/ml_1m/tallrec_baseline/lora-llama7b/sample_128",
     test_data_path: str = "./data/test.json",
     result_json_data: str = "llama2_chat_temp_new.json",
@@ -48,7 +48,7 @@ def main(
     
     # temp_list = model_type.split('_')
     seed = 42
-    sample = 256
+    sample = 128
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')

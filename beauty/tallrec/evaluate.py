@@ -27,7 +27,7 @@ except:  # noqa: E722
 def main(
     load_8bit: bool = True,
     base_model: str = "baffo32/decapoda-research-llama-7B-hf",##"meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora_llama2_chat/sample_256",
+    lora_weights: str = "./lora_llama2_chat/sample_64",
     # lora_weights: str = "/home/grads/m/mbismay/llm-based-seq-rec/ml_1m/ml_1m/tallrec_baseline/lora-llama7b/sample_128",
     test_data_path: str = "./data/test.json",
     result_json_data: str = "llama2_chat_temp.json",
@@ -42,12 +42,12 @@ def main(
     model_name = '_'.join(model_type.split('_')[:2])
     print(f"model_type: {model_type} model_name: {model_name}")
 
-    train_sce = 'fashion'
-    test_sce = 'fashion'
+    train_sce = 'beauty'
+    test_sce = 'beauty'
     
     # temp_list = model_type.split('_')
     seed = 0
-    sample = 256
+    sample = 64
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')

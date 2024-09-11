@@ -103,7 +103,7 @@ else:
     reasoning_train_dict = dict()
 
 cnt = 0
-batch_size = 32
+batch_size = 8
 batch_prompts = []
 batch_users = []
 
@@ -133,7 +133,7 @@ for user, content in tqdm.tqdm(prompt_dataset.items()):
         batch_users = []
         print("Time taken for batch:", time.time() - batch_start)
         batch_start = time.time()
-    if cnt%(batch_size*5)== 0:
+    if cnt%(batch_size*2)== 0:
         print(f"Saving at {cnt}...")
         f2 = open(target_path,"wb")
         pickle.dump(reasoning_train_dict,f2)

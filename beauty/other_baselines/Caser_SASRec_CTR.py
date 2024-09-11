@@ -26,11 +26,11 @@ def parse_args():
 
     parser.add_argument('--epoch', type=int, default=100,
                         help='Number of max epochs.')
-    parser.add_argument('--data', nargs='?', default='fashion',
-                        help='book, movie, fashion')
+    parser.add_argument('--data', nargs='?', default='beauty',
+                        help='book, movie, fashion, beauty')
     # parser.add_argument('--pretrain', type=int, default=1,
     #                     help='flag for pretrain. 1: initialize from pretrain; 0: randomly initialize; -1: save the model to pretrain file')
-    parser.add_argument('--batch_size', type=int, default=1024,
+    parser.add_argument('--batch_size', type=int, default=512,
                         help='Batch size.')
     parser.add_argument('--hidden_factor', type=int, default=16,
                         help='Number of hidden factors, i.e., embedding size.')
@@ -188,7 +188,7 @@ class Caser_with_label_CTR(nn.Module):
 
     def forward(self, states, state_rate, len_states):
         input_emb = self.item_embeddings(states)
-        state_rate_reshape = state_rate.view(-1,4,1)
+        state_rate_reshape = state_rate.view(-1,5,1)
         input_emb = torch.cat((input_emb, state_rate_reshape), dim=2)
         # input_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
         mask = self.get_mask(len_states, states.shape[1])
@@ -301,7 +301,7 @@ class SASRec_with_label_CTR(nn.Module):
     def forward(self, states, state_rate, len_states):
         # inputs_emb = self.item_embeddings(states) * self.item_embeddings.embedding_dim ** 0.5
         inputs_emb = self.item_embeddings(states)
-        state_rate_reshape = state_rate.view(-1,4,1)
+        state_rate_reshape = state_rate.view(-1,5,1)
         # print(len(inputs_emb), state_rate_reshape)
         inputs_emb = torch.cat((inputs_emb, state_rate_reshape), dim=2)
         inputs_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
@@ -320,7 +320,7 @@ class SASRec_with_label_CTR(nn.Module):
     def forward_eval(self, states, state_rate, len_states):
         # inputs_emb = self.item_embeddings(states) * self.item_embeddings.embedding_dim ** 0.5
         inputs_emb = self.item_embeddings(states)
-        state_rate_reshape = state_rate.view(-1,4,1)
+        state_rate_reshape = state_rate.view(-1,5,1)
         inputs_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
         seq = self.emb_dropout(inputs_emb)
         mask = self.get_mask(len_states, states.shape[1])
@@ -436,6 +436,7 @@ def main(result_folder, topk=[1,3,5,10,20]):
     train_dataset = RecDataset_seq_CTR(train_data, max_len)
     print(f"Train dataset length: {len(train_dataset)}")
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=1)
+    print("train_loader created")
 
 
     total_step=0
@@ -447,6 +448,7 @@ def main(result_folder, topk=[1,3,5,10,20]):
     for i in range(args.epoch):
         # for j in tqdm(range(num_batches)):
         for j, (seq, history_rating, len_seq, target, target_rating) in tqdm(enumerate(train_loader)):
+            print(seq, history_rating, len_seq, target, target_rating)
             model = model.train()
             optimizer.zero_grad()
             seq = torch.LongTensor(seq)
@@ -537,6 +539,10 @@ if __name__ == '__main__':
         max_len = 4
         seq_size = max_len
         item_num = 6089
+    elif args.data == "beauty":
+        max_len = 5
+        seq_size = max_len
+        item_num = 1220
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

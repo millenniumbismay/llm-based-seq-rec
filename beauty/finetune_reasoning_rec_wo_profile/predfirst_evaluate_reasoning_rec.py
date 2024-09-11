@@ -39,9 +39,9 @@ import gc
 def main(
     load_8bit: bool = True,
     base_model: str = "meta-llama/Llama-2-7b-chat-hf",
-    lora_weights: str = "./lora_llama2_chat/sample256_valsample800_lr5e-6_valauc",
+    lora_weights: str = "./lora_llama2_chat/sample128_valsample600_lr1e-4_valauc",
     # lora_weights: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss",
-    test_data_path: str = "./final_data/fashion/test.json",
+    test_data_path: str = "./final_data/beauty/test.json",
     # result_json_data: str = "./lora_llama2_chat/sample4096_valsample3000_epoch3_eval_loss/results.json",
     # batch_size: int = 32,
     # share_gradio: bool = False,
@@ -57,11 +57,11 @@ def main(
     model_name = lora_weights.split('/')[-1]
     print(f"model_type: {model_type} model_name: {model_name}")
 
-    train_sce = 'fashion'
-    test_sce = 'fashion'
+    train_sce = 'beauty'
+    test_sce = 'beauty'
     
     seed = 42
-    sample = '256'
+    sample = '128'
     
     if os.path.exists(result_json_data):
         f = open(result_json_data, 'r')
@@ -163,7 +163,7 @@ def main(
         num_beams=1,
         max_new_tokens=300,
         batch_size=1,
-        max_length=2100,
+        max_length=2048,
         **kwargs,
     ):
         # print("-"*100)
@@ -281,7 +281,7 @@ def main(
     from tqdm import tqdm
     gold = []
     pred = []
-    test_sample = 800
+    test_sample = 600
     
     with open(test_data_path, 'r') as f:
         test_data = json.load(f)
@@ -301,7 +301,7 @@ def main(
 
         # gold = [int(_['output'] == 'Yes.') for _ in test_data]
 
-        def batch(list, batch_size=8):
+        def batch(list, batch_size=4):
             chunk_size = (len(list) - 1) // batch_size + 1
             for i in range(chunk_size):
                 yield list[batch_size * i: batch_size * (i + 1)]
