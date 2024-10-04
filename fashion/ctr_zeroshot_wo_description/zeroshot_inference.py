@@ -79,12 +79,12 @@ def getZeroshotInference(model, content):
     return only_response
 
 print(f"Loading prompts...")
-zeroshot_prompt_path = './ctr_zeroshot_dataset/zeroshot_valid.json'
+zeroshot_prompt_path = './ctr_zeroshot_dataset/zeroshot_test.json'
 with open(zeroshot_prompt_path, 'r') as f:
     zeroshot_prompts = json.load(f)
 print(len(zeroshot_prompts))
 
-inference_path = "zeroshot_inference_valid.json"
+inference_path = "zeroshot_inference_test.json"
 if os.path.isfile(inference_path):
     print("Loading zeroshot_inference_dict...")
     with open(inference_path, 'r') as f:
@@ -102,7 +102,7 @@ else:
     inference_dict = dict()
 
 cnt = 0
-batch_size = 16
+batch_size = 8
 batch_prompts = []
 batch_users = []
 batch_prompts_cnt = 0

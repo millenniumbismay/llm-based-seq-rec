@@ -102,7 +102,7 @@ else:
     inference_dict = dict()
 
 cnt = 0
-batch_size = 12
+batch_size = 8
 batch_prompts = []
 batch_users = []
 batch_prompts_cnt = 0
@@ -151,8 +151,8 @@ for user, prompt in tqdm.tqdm(zeroshot_prompts.items()):
     gc.collect()
     torch.cuda.empty_cache()
 
-    # if cnt == batch_size*2:
-    #     break
+    if cnt == 1500:
+        break
 
 print("Time taken for all:", time.time() - start)
 with open(inference_path,"w+") as f:
