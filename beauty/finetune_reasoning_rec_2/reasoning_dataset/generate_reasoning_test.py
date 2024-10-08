@@ -101,7 +101,7 @@ else:
     reasoning_train_dict = dict()
 
 cnt = 0
-batch_size = 8
+batch_size = 16
 batch_prompts = []
 batch_users = []
 

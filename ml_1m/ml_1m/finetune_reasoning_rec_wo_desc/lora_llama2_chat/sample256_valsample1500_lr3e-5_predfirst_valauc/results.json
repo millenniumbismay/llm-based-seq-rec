@@ -1,0 +1,14 @@
+{
+    "movie": {
+        "movie": {
+            "sample256_valsample1500_lr3e-5_predfirst_valauc": {
+                "42": {
+                    "256": {
+                        "auc": 0.7437472741810429,
+                        "bertscore": 0.72432260765632
+                    }
+                }
+            }
+        }
+    }
+}
